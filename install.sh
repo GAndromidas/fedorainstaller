@@ -17,20 +17,6 @@ set_hostname() {
     fi
 }
 
-# Function to make the bootloader silent (GRUB on Fedora)
-make_grub_silent() {
-    echo "Making GRUB bootloader silent..."
-    sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=3/' /etc/default/grub
-    sudo sed -i 's/^GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX="quiet loglevel=3 rd.udev.log_priority=3"/' /etc/default/grub
-    sudo grub2-mkconfig -o /boot/grub2/grub.cfg
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to update GRUB configuration."
-        exit 1
-    else
-        echo "GRUB configuration updated successfully."
-    fi
-}
-
 # Function to enable asterisks for password in sudoers
 enable_asterisks_sudo() {
     echo "Enabling password feedback in sudoers..."
@@ -53,7 +39,8 @@ EOL
 # Function to update the system
 update_system() {
     echo "Updating system..."
-    sudo dnf update -y
+    sudo dnf update --refresh
+    sudo dnf upgrade -y
     echo "System updated successfully."
 }
 
@@ -153,14 +140,6 @@ install_starship() {
     fi
 }
 
-# Function to configure locales
-configure_locales() {
-    echo "Configuring Locales..."
-    sudo localectl set-locale LANG=el_GR.UTF-8
-    sudo localectl set-keymap gr
-    echo "Locales configured successfully."
-}
-
 # Function to install DNF plugins
 install_dnf_plugins() {
     echo "Installing DNF plugins..."
@@ -249,7 +228,6 @@ reboot_system() {
 
 # Call functions in the desired order
 set_hostname
-make_grub_silent
 enable_asterisks_sudo
 configure_dnf
 update_system
@@ -263,7 +241,6 @@ install_zsh
 change_shell_to_zsh
 move_zshrc
 install_starship
-configure_locales
 install_dnf_plugins
 install_programs
 enable_services
