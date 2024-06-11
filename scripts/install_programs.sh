@@ -147,7 +147,6 @@ gnome_install_programs=(
     celluloid
     dconf-editor
     gnome-tweaks
-    gufw
     seahorse
     transmission-gtk
     # Add or remove GNOME-specific programs as needed
