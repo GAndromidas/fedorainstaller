@@ -67,6 +67,7 @@ pacman_programs=(
     cmatrix
     curl
     dosfstools
+    fastfetch
     flatpak
     firewall-config
     fwupd
@@ -97,8 +98,8 @@ pacman_programs=(
 
 # Essential programs to install using dnf
 essential_programs=(
-    discord
     chromium
+    discord
     filezilla
     firefox
     gimp

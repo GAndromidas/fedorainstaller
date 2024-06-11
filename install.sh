@@ -29,7 +29,6 @@ configure_dnf() {
     echo "Configuring DNF..."
     sudo tee -a /etc/dnf/dnf.conf <<EOL
 fastestmirror=True
-deltarpm=True
 max_parallel_downloads=10
 defaultyes=True
 EOL
@@ -39,8 +38,7 @@ EOL
 # Function to update the system
 update_system() {
     echo "Updating system..."
-    sudo dnf update --refresh
-    sudo dnf upgrade -y
+    sudo dnf update -y --refresh
     echo "System updated successfully."
 }
 
@@ -193,6 +191,23 @@ enable_services() {
     echo "Services enabled successfully."
 }
 
+# Function to create fastfetch config
+create_fastfetch_config() {
+    echo
+    printf "Creating fastfetch config... "
+    echo
+    fastfetch --gen-config
+    echo
+    printf "fastfetch config created successfully.\n"
+
+    echo
+    printf "Copying fastfetch config from repository to ~/.config/fastfetch/... "
+    echo
+    cp "$HOME"/fedorainstaller/configs/config.jsonc "$HOME"/.config/fastfetch/config.jsonc
+    echo
+    printf "fastfetch config copied successfully.\n"
+}
+
 # Function to configure firewall
 configure_firewalld() {
     echo "Configuring Firewalld..."
@@ -258,6 +273,7 @@ install_starship
 install_dnf_plugins
 install_programs
 enable_services
+create_fastfetch_config
 configure_firewalld
 clear_unused_packages_cache
 delete_fedorainstaller_folder
