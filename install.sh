@@ -1,0 +1,273 @@
+#!/bin/bash
+
+# Script: install.sh
+# Description: Script for setting up a Fedora 40 system with various configurations and installations.
+# Author: George Andromidas
+
+# Function to set the hostname
+set_hostname() {
+    echo "Please enter the desired hostname:"
+    read -p "Hostname: " hostname
+    sudo hostnamectl set-hostname "$hostname"
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to set the hostname."
+        exit 1
+    else
+        echo "Hostname set to $hostname successfully."
+    fi
+}
+
+# Function to install kernel headers
+install_kernel_headers() {
+    echo "Installing kernel headers..."
+    sudo dnf install -y kernel-headers kernel-devel
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install kernel headers."
+        exit 1
+    else
+        echo "Kernel headers installed successfully."
+    fi
+}
+
+# Function to make the bootloader silent (GRUB on Fedora)
+make_grub_silent() {
+    echo "Making GRUB bootloader silent..."
+    sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=3/' /etc/default/grub
+    sudo sed -i 's/^GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX="quiet loglevel=3 rd.udev.log_priority=3"/' /etc/default/grub
+    sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to update GRUB configuration."
+        exit 1
+    else
+        echo "GRUB configuration updated successfully."
+    fi
+}
+
+# Function to enable asterisks for password in sudoers
+enable_asterisks_sudo() {
+    echo "Enabling password feedback in sudoers..."
+    echo "Defaults pwfeedback" | sudo tee -a /etc/sudoers.d/pwfeedback
+    echo "Password feedback enabled in sudoers."
+}
+
+# Function to configure DNF
+configure_dnf() {
+    echo "Configuring DNF..."
+    sudo tee -a /etc/dnf/dnf.conf <<EOL
+fastestmirror=True
+deltarpm=True
+max_parallel_downloads=10
+defaultyes=True
+EOL
+    echo "DNF configuration updated successfully."
+}
+
+# Function to update the system
+update_system() {
+    echo "Updating system..."
+    sudo dnf update -y
+    echo "System updated successfully."
+}
+
+# Function to enable RPM Fusion repositories
+enable_rpm_fusion() {
+    echo "Enabling RPM Fusion repositories..."
+    sudo dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+    sudo dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+    echo "RPM Fusion repositories enabled successfully."
+}
+
+# Function to add Flathub repository
+add_flathub_repo() {
+    echo "Adding Flathub repository..."
+    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+    flatpak update
+    echo "Flathub repository added successfully."
+}
+
+# Function to install media codecs
+install_media_codecs() {
+    echo "Installing media codecs..."
+    sudo dnf install -y gstreamer1-plugins-{bad-\*,good-\*,base} gstreamer1-plugin-openh264 gstreamer1-libav --exclude=gstreamer1-plugins-bad-free-devel
+    sudo dnf install -y lame\* --exclude=lame-devel
+    sudo dnf group upgrade -y --with-optional Multimedia
+    echo "Media codecs installed successfully."
+}
+
+# Function to enable hardware video acceleration
+enable_hw_video_acceleration() {
+    echo "Enabling hardware video acceleration..."
+    sudo dnf install -y ffmpeg ffmpeg-libs libva libva-utils
+    sudo dnf swap -y mesa-va-drivers mesa-va-drivers-freeworld
+    sudo dnf swap -y mesa-vdpau-drivers mesa-vdpau-drivers-freeworld
+    sudo dnf upgrade -y
+    echo "Hardware video acceleration enabled successfully."
+}
+
+# Function to install OpenH264 for Firefox
+install_openh264_for_firefox() {
+    echo "Installing OpenH264 for Firefox..."
+    sudo dnf config-manager --set-enabled fedora-cisco-openh264
+    sudo dnf install -y openh264 gstreamer1-plugin-openh264 mozilla-openh264
+    echo "OpenH264 for Firefox installed successfully."
+}
+
+# Function to install ZSH and Oh-My-ZSH
+install_zsh() {
+    echo "Installing ZSH and Oh-My-ZSH..."
+    sudo dnf install -y zsh
+    yes | sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    echo "ZSH and Oh-My-ZSH installed successfully."
+}
+
+# Function to change shell to ZSH
+change_shell_to_zsh() {
+    echo "Changing shell to ZSH..."
+    sudo chsh -s "$(which zsh)" $USER
+    echo "Shell changed to ZSH."
+}
+
+# Function to move .zshrc
+move_zshrc() {
+    echo "Copying .zshrc to Home Folder..."
+    cp "$HOME"/fedorainstaller/configs/.zshrc "$HOME"/
+    echo ".zshrc copied successfully."
+}
+
+# Function to install Starship prompt
+install_starship() {
+    echo "Installing Starship prompt..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
+
+    if [ $? -eq 0 ]; then
+        echo "Starship prompt installed successfully."
+        mkdir -p "$HOME/.config"
+        if [ -f "$HOME/fedorainstaller/configs/starship.toml" ]; then
+            mv "$HOME/fedorainstaller/configs/starship.toml" "$HOME/.config/starship.toml"
+            echo "starship.toml moved to $HOME/.config/"
+        else
+            echo "starship.toml not found in $HOME/fedorainstaller/configs/"
+        fi
+    else
+        echo "Starship prompt installation failed."
+    fi
+}
+
+# Function to configure locales
+configure_locales() {
+    echo "Configuring Locales..."
+    sudo localectl set-locale LANG=el_GR.UTF-8
+    sudo localectl set-keymap gr
+    echo "Locales configured successfully."
+}
+
+# Function to install DNF plugins
+install_dnf_plugins() {
+    echo "Installing DNF plugins..."
+    sudo dnf install -y dnf-plugins-core
+    echo "DNF plugins installed successfully."
+}
+
+# Function to install programs
+install_programs() {
+    echo "Installing Programs..."
+    (cd "$HOME/fedorainstaller/scripts" && ./install_programs.sh)
+    echo "Programs installed successfully."
+
+    install_flatpak_programs
+}
+
+# Function to install flatpak programs
+install_flatpak_programs() {
+    echo "Installing Flatpak Programs..."
+    (cd "$HOME/fedorainstaller/scripts" && ./install_flatpak_programs.sh)
+    echo "Flatpak programs installed successfully."
+}
+
+# Function to enable services
+enable_services() {
+    echo "Enabling Services..."
+    local services=(
+        "fstrim.timer"
+        "bluetooth"
+        "sshd"
+        "firewalld"
+    )
+
+    for service in "${services[@]}"; do
+        sudo systemctl enable --now "$service"
+    done
+
+    echo "Services enabled successfully."
+}
+
+# Function to configure firewall
+configure_firewalld() {
+    echo "Configuring Firewalld..."
+    sudo dnf install -y firewalld
+    sudo systemctl start firewalld
+    sudo systemctl enable firewalld
+    sudo firewall-cmd --permanent --set-default-zone=public
+    sudo firewall-cmd --permanent --add-service=ssh
+    sudo firewall-cmd --reload
+    echo "Firewalld configured successfully."
+}
+
+# Function to clear unused packages and cache
+clear_unused_packages_cache() {
+    echo "Clearing Unused Packages and Cache..."
+    sudo dnf autoremove -y
+    sudo dnf clean all
+    echo "Unused packages and cache cleared successfully."
+}
+
+# Function to delete the fedorainstaller folder
+delete_fedorainstaller_folder() {
+    echo "Deleting Fedorainstaller Folder..."
+    sudo rm -rf "$HOME"/fedorainstaller
+    echo "Fedorainstaller folder deleted successfully."
+}
+
+# Function to reboot system
+reboot_system() {
+    echo "Rebooting System..."
+    echo "Press 'y' to reboot now, or 'n' to cancel."
+
+    read -p "Do you want to reboot now? (y/n): " confirm_reboot
+
+    while [[ ! "$confirm_reboot" =~ ^[yn]$ ]]; do
+        read -p "Invalid input. Please enter 'y' to reboot now or 'n' to cancel: " confirm_reboot
+    done
+
+    if [[ "$confirm_reboot" == "y" ]]; then
+        echo "Rebooting now..."
+        sudo reboot
+    else
+        echo "Reboot canceled."
+    fi
+}
+
+# Call functions in the desired order
+set_hostname
+install_kernel_headers
+make_grub_silent
+enable_asterisks_sudo
+configure_dnf
+update_system
+enable_rpm_fusion
+add_flathub_repo
+install_media_codecs
+enable_hw_video_acceleration
+install_openh264_for_firefox
+install_zsh
+change_shell_to_zsh
+move_zshrc
+install_starship
+configure_locales
+install_dnf_plugins
+install_programs
+enable_services
+configure_firewalld
+clear_unused_packages_cache
+delete_fedorainstaller_folder
+reboot_system
