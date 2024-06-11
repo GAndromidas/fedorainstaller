@@ -133,7 +133,7 @@ kde_remove_programs=(
     telepathy
     kget
     ktorrent
-    elisa
+    elisa-player
     dragonplayer
     k3b
     marble
