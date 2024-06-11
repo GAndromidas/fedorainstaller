@@ -17,18 +17,6 @@ set_hostname() {
     fi
 }
 
-# Function to install kernel headers
-install_kernel_headers() {
-    echo "Installing kernel headers..."
-    sudo dnf install -y kernel-headers kernel-devel
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to install kernel headers."
-        exit 1
-    else
-        echo "Kernel headers installed successfully."
-    fi
-}
-
 # Function to make the bootloader silent (GRUB on Fedora)
 make_grub_silent() {
     echo "Making GRUB bootloader silent..."
@@ -67,6 +55,18 @@ update_system() {
     echo "Updating system..."
     sudo dnf update -y
     echo "System updated successfully."
+}
+
+# Function to install kernel headers
+install_kernel_headers() {
+    echo "Installing kernel headers..."
+    sudo dnf install -y kernel-headers kernel-devel
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install kernel headers."
+        exit 1
+    else
+        echo "Kernel headers installed successfully."
+    fi
 }
 
 # Function to enable RPM Fusion repositories
@@ -249,11 +249,11 @@ reboot_system() {
 
 # Call functions in the desired order
 set_hostname
-install_kernel_headers
 make_grub_silent
 enable_asterisks_sudo
 configure_dnf
 update_system
+install_kernel_headers
 enable_rpm_fusion
 add_flathub_repo
 install_media_codecs
