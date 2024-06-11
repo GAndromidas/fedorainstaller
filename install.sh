@@ -107,6 +107,14 @@ install_zsh() {
     echo "ZSH and Oh-My-ZSH installed successfully."
 }
 
+# Function to install ZSH plugins
+install_zsh_plugins() {
+    echo "Installing ZSH plugins..."
+    git clone https://github.com/zsh-users/zsh-autosuggestions ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+    echo "ZSH plugins installed successfully."
+}
+
 # Function to change shell to ZSH
 change_shell_to_zsh() {
     echo "Changing shell to ZSH..."
@@ -118,7 +126,12 @@ change_shell_to_zsh() {
 move_zshrc() {
     echo "Copying .zshrc to Home Folder..."
     cp "$HOME"/fedorainstaller/configs/.zshrc "$HOME"/
-    echo ".zshrc copied successfully."
+
+    # Add plugins to .zshrc
+    echo "Configuring .zshrc for plugins..."
+    sed -i '/^plugins=/c\plugins=(git zsh-autosuggestions zsh-syntax-highlighting)' "$HOME/.zshrc"
+
+    echo ".zshrc copied and configured successfully."
 }
 
 # Function to install Starship prompt
@@ -238,6 +251,7 @@ install_media_codecs
 enable_hw_video_acceleration
 install_openh264_for_firefox
 install_zsh
+install_zsh_plugins
 change_shell_to_zsh
 move_zshrc
 install_starship
