@@ -98,15 +98,15 @@ pacman_programs=(
 # Essential programs to install using dnf
 essential_programs=(
     discord
+    chromium
     filezilla
     firefox
     gimp
-    libreoffice-fresh
     lutris
     obs-studio
     smplayer
     steam
-    telegram-desktop
+    telegram
     timeshift
     wine
     # Add or remove essential programs as needed
@@ -122,7 +122,6 @@ kde_install_programs=(
     qbittorrent
     spectacle
     vlc
-    xwaylandvideobridge
     # Add or remove KDE-specific programs as needed
 )
 
