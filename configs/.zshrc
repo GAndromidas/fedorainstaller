@@ -137,7 +137,7 @@ alias jctl='journalctl -p 3 -xb'
 alias df='df -h'
 alias free="free -mt"
 alias hw='hwinfo --short'
-alias update-grub=''
+alias update-grub='sudo grub2-mkconfig -o /boot/grub2/grub.cfg'
 
 fastfetch --cpu-temp
 

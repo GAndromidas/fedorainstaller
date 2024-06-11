@@ -108,7 +108,6 @@ essential_programs=(
     steam
     telegram
     timeshift
-    wine
     # Add or remove essential programs as needed
 )
 
