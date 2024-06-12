@@ -73,13 +73,12 @@ pacman_programs=(
     fwupd
     gamemode
     gamescope
-    gnome-disk-utility
+
     hwinfo
     inxi
     mangohud
     net-tools
     ntfs-3g
-    os-prober
     p7zip
     p7zip-plugins
     python3-speedtest-cli
@@ -145,6 +144,7 @@ kde_remove_programs=(
 gnome_install_programs=(
     celluloid
     dconf-editor
+    gnome-disk-utility
     gnome-tweaks
     seahorse
     transmission-gtk
