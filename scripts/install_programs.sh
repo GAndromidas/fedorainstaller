@@ -90,7 +90,6 @@ pacman_programs=(
     unzip
     util-linux-user
     wget
-    wlroots
     xdg-desktop-portal-gtk
     zoxide
     # Add or remove programs as needed
