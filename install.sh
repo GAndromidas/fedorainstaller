@@ -246,6 +246,32 @@ configure_firewalld() {
     echo "Firewalld configured successfully."
 }
 
+# Function to install Nerd Fonts
+install_nerd_fonts() {
+    # Create directory for fonts if it doesn't exist
+    mkdir -p ~/.local/share/fonts
+
+    # Download Nerd Font (Replace URL with the desired Nerd Font version)
+    wget -O ~/.local/share/fonts/Hack.zip https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/Hack.zip
+
+    # Navigate to the fonts directory
+    cd ~/.local/share/fonts
+
+    # Unzip the downloaded font archive
+    unzip Hack.zip
+
+    # Clean up the zip file
+    rm Hack.zip
+
+    # Update font cache
+    fc-cache -f -v
+
+    echo "Nerd Fonts installed successfully!"
+
+    # Optionally, remove the zip file after installation
+    rm -f ~/.local/share/fonts/Hack.zip
+}
+
 # Function to clear unused packages and cache
 clear_unused_packages_cache() {
     echo "Clearing Unused Packages and Cache..."
@@ -301,6 +327,7 @@ install_programs
 enable_services
 create_fastfetch_config
 configure_firewalld
+install_nerd_fonts
 clear_unused_packages_cache
 delete_fedorainstaller_folder
 reboot_system
