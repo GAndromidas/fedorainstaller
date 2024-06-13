@@ -162,8 +162,8 @@ install_dnf_plugins() {
 # Function to add Flathub repository
 add_flathub_repo() {
     echo "Adding Flathub repository..."
-    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    flatpak update
+    sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+    sudo flatpak update
     echo "Flathub repository added successfully."
 }
 
