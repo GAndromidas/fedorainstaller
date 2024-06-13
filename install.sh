@@ -46,7 +46,7 @@ enable_rpm_fusion() {
 # Function to update the system
 update_system() {
     echo "Updating system..."
-    sudo dnf upgrade --refresh
+    sudo dnf upgrade --refresh -y
     sudo dnf groupupdate core
     echo "System updated successfully."
 }
