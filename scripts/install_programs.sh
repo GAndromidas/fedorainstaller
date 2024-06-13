@@ -33,8 +33,11 @@ remove_programs() {
         echo "No programs to remove."
     else
         sudo dnf remove -y "${specific_remove_programs[@]}"
-        echo
-        printf "Programs removed successfully.\n"
+        if [ $? -ne 0 ]; then
+            echo "Error removing programs."
+        else
+            echo "Programs removed successfully."
+        fi
     fi
 }
 
@@ -50,8 +53,11 @@ install_programs() {
         echo "Essential programs: ${essential_programs[@]}"
         echo "Specific install programs: ${specific_install_programs[@]}"
         sudo dnf install -y "${dnf_programs[@]}" "${essential_programs[@]}" "${specific_install_programs[@]}"
-        echo
-        printf "Programs installed successfully.\n"
+        if [ $? -ne 0 ]; then
+            echo "Error installing programs."
+        else
+            echo "Programs installed successfully."
+        fi
     fi
 }
 
