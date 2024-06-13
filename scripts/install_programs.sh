@@ -46,7 +46,7 @@ install_programs() {
     echo
     printf "Installing Programs... \n"
     echo
-    sudo dnf install -y "${dnf_programs[@]}" "${essential_programs[@]}" "${specific_install_programs[@]}"
+    sudo dnf install -y "${essential_programs[@]}" "${specific_install_programs[@]}"
     if [ $? -eq 0 ]; then
         echo
         printf "Programs installed successfully.\n"
@@ -59,40 +59,35 @@ install_programs() {
 
 # Main script
 
-# Programs to install using dnf
-dnf_programs=(
+# Essential programs to install using dnf
+essential_programs=(
     android-tools
     bleachbit
     btop
     cmatrix
     dnf5
     dnf5-plugins
+    discord
     fastfetch
+    filezilla
+    firefox
     gamemode
+    gimp
     hwinfo
     inxi
+    lutris
     mangohud
     net-tools
+    obs-studio
     python3-speedtest-cli
     samba
     sl
-    unrar
-    zoxide
-    # Add or remove programs as needed
-)
-
-# Essential programs to install using dnf
-essential_programs=(
-    discord
-    filezilla
-    firefox
-    gimp
-    lutris
-    obs-studio
     smplayer
     steam
     telegram
     timeshift
+    unrar
+    zoxide
     # Add or remove essential programs as needed
 )
 
