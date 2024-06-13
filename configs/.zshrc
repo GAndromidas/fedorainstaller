@@ -139,7 +139,7 @@ alias free="free -mt"
 alias hw='hwinfo --short'
 alias update-grub='sudo grub2-mkconfig -o /boot/grub2/grub.cfg'
 
-fastfetch --cpu-temp
+fastfetch --cpu-temp --gpu-temp
 
 # Set up zoxide and starship
 eval "$(zoxide init zsh)"
