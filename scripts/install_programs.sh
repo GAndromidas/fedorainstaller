@@ -63,6 +63,8 @@ dnf_programs=(
     bleachbit
     btop
     cmatrix
+    dnf5
+    dnf5-plugins
     fastfetch
     gamemode
     gamescope

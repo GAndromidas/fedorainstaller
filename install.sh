@@ -35,10 +35,19 @@ EOL
     echo "DNF configuration updated successfully."
 }
 
+# Function to enable RPM Fusion repositories
+enable_rpm_fusion() {
+    echo "Enabling RPM Fusion repositories..."
+    sudo dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+    sudo dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+    echo "RPM Fusion repositories enabled successfully."
+}
+
 # Function to update the system
 update_system() {
     echo "Updating system..."
-    sudo dnf update -y --refresh
+    sudo dnf upgrade --refresh
+    sudo dnf groupupdate core
     echo "System updated successfully."
 }
 
@@ -52,14 +61,6 @@ install_kernel_headers() {
     else
         echo "Kernel headers installed successfully."
     fi
-}
-
-# Function to enable RPM Fusion repositories
-enable_rpm_fusion() {
-    echo "Enabling RPM Fusion repositories..."
-    sudo dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
-    sudo dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
-    echo "RPM Fusion repositories enabled successfully."
 }
 
 # Function to install media codecs
@@ -310,9 +311,9 @@ reboot_system() {
 set_hostname
 enable_asterisks_sudo
 configure_dnf
+enable_rpm_fusion
 update_system
 install_kernel_headers
-enable_rpm_fusion
 install_media_codecs
 enable_hw_video_acceleration
 install_openh264_for_firefox
