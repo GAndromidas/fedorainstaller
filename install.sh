@@ -233,7 +233,7 @@ configure_firewalld() {
     fi
 
     # Check if KDE Connect is installed
-    if rpm -q kdeconnect &> /dev/null; then
+    if rpm -q kde-connect &> /dev/null; then
         # KDE Connect is installed, enable ports
         sudo firewall-cmd --permanent --add-port=1714-1764/tcp
         sudo firewall-cmd --permanent --add-port=1714-1764/udp
