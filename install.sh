@@ -62,14 +62,6 @@ enable_rpm_fusion() {
     echo "RPM Fusion repositories enabled successfully."
 }
 
-# Function to add Flathub repository
-add_flathub_repo() {
-    echo "Adding Flathub repository..."
-    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    flatpak update
-    echo "Flathub repository added successfully."
-}
-
 # Function to install media codecs
 install_media_codecs() {
     echo "Installing media codecs..."
@@ -180,6 +172,14 @@ install_flatpak_programs() {
     echo "Installing Flatpak Programs..."
     (cd "$HOME/fedorainstaller/scripts" && ./install_flatpak_programs.sh)
     echo "Flatpak programs installed successfully."
+}
+
+# Function to add Flathub repository
+add_flathub_repo() {
+    echo "Adding Flathub repository..."
+    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+    flatpak update
+    echo "Flathub repository added successfully."
 }
 
 # Function to enable services
@@ -313,7 +313,6 @@ configure_dnf
 update_system
 install_kernel_headers
 enable_rpm_fusion
-add_flathub_repo
 install_media_codecs
 enable_hw_video_acceleration
 install_openh264_for_firefox
@@ -324,6 +323,7 @@ move_zshrc
 install_starship
 install_dnf_plugins
 install_programs
+add_flathub_repo
 enable_services
 create_fastfetch_config
 configure_firewalld
