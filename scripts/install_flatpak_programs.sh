@@ -7,11 +7,13 @@ install_flatpak_programs_kde() {
     echo
     # List of Flatpak packages to install for KDE
     flatpak_packages=(
-        net.davidotek.pupgui2 # ProtonUp-QT
-        it.mijorus.gearlever # Gear Lever
-        com.spotify.Client # Spotify
-        com.stremio.Stremio # Stremio
-        # Add or remove packages as needed
+    com.github.tchx84.Flatseal # Flatseal
+    com.spotify.Client # Spotify
+    com.stremio.Stremio # Stremio
+    io.github.shiftey.Desktop # GitHub Desktop
+    it.mijorus.gearlever # Gear Lever
+    net.davidotek.pupgui2 # ProtonUp-Qt
+    # Add or remove packages as needed
     )
     for package in "${flatpak_packages[@]}"; do
         sudo flatpak install -y flathub "$package"
@@ -27,12 +29,14 @@ install_flatpak_programs_gnome() {
     echo
     # List of Flatpak packages to install for GNOME
     flatpak_packages=(
-        net.davidotek.pupgui2 # ProtonUp-QT
-        it.mijorus.gearlever # Gear Lever
-        com.mattjakeman.ExtensionManager # Extensions Manager
-        com.spotify.Client # Spotify
-        com.stremio.Stremio # Stremio
-        # Add or remove packages as needed
+    com.github.tchx84.Flatseal # Flatseal
+    com.mattjakeman.ExtensionManager # Extensions Manager
+    com.spotify.Client # Spotify
+    com.stremio.Stremio # Stremio
+    com.vysp3r.ProtonPlus # ProtonPlus
+    io.github.shiftey.Desktop # GitHub Desktop
+    it.mijorus.gearlever # Gear Lever
+    # Add or remove packages as needed
     )
     for package in "${flatpak_packages[@]}"; do
         sudo flatpak install -y flathub "$package"
