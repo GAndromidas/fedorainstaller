@@ -70,14 +70,12 @@ essential_programs=(
     discord
     fastfetch
     filezilla
-    firefox
     gamemode
     gimp
     hwinfo
     inxi
     lutris
     mangohud
-    net-tools
     obs-studio
     python3-speedtest-cli
     samba
@@ -93,13 +91,8 @@ essential_programs=(
 
 # KDE-specific programs to install using dnf
 kde_install_programs=(
-    gwenview
-    kdeconnect
-    kwalletmanager
     kvantum
-    okular
     qbittorrent
-    spectacle
     vlc
     # Add or remove KDE-specific programs as needed
 )
