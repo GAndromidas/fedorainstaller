@@ -152,13 +152,6 @@ install_starship() {
     fi
 }
 
-# Function to install DNF plugins
-install_dnf_plugins() {
-    echo "Installing DNF plugins..."
-    sudo dnf install -y dnf-plugins-core
-    echo "DNF plugins installed successfully."
-}
-
 # Function to add Flathub repository
 add_flathub_repo() {
     echo "Adding Flathub repository..."
@@ -322,7 +315,6 @@ install_zsh_plugins
 change_shell_to_zsh
 move_zshrc
 install_starship
-install_dnf_plugins
 add_flathub_repo
 install_programs
 enable_services

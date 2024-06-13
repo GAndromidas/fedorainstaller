@@ -69,7 +69,6 @@ dnf_programs=(
     dnf5-plugins
     fastfetch
     gamemode
-    gamescope
     hwinfo
     inxi
     mangohud
