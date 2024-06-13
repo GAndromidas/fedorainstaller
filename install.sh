@@ -176,6 +176,29 @@ install_flatpak_programs() {
     echo "Flatpak programs installed successfully."
 }
 
+# Function to install multiple Nerd Fonts
+install_nerd_fonts() {
+    echo "Installing Nerd Fonts..."
+
+    # Create fonts directory if it doesn't exist
+    mkdir -p ~/.local/share/fonts
+
+    # List of fonts to install
+    fonts=("Hack" "FiraCode" "JetBrainsMono" "Noto")
+
+    for font in "${fonts[@]}"; do
+        echo "Downloading and installing $font Nerd Font..."
+        wget -O "$font.zip" "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/$font.zip"
+        unzip -o "$font.zip" -d ~/.local/share/fonts/
+        rm "$font.zip"
+    done
+
+    # Update font cache
+    fc-cache -fv
+
+    echo "Nerd Fonts installed successfully."
+}
+
 # Function to enable services
 enable_services() {
     echo "Enabling Services..."
@@ -291,6 +314,7 @@ move_zshrc
 install_starship
 add_flathub_repo
 install_programs
+install_nerd_fonts
 enable_services
 create_fastfetch_config
 configure_firewalld
