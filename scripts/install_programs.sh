@@ -2,6 +2,8 @@
 
 # Function to detect desktop environment and set specific programs to install or remove
 detect_desktop_environment() {
+    echo "Detecting desktop environment..."
+    echo "Current Desktop: $XDG_CURRENT_DESKTOP"
     if [ "$XDG_CURRENT_DESKTOP" == "KDE" ]; then
         echo "KDE detected."
         specific_install_programs=("${kde_install_programs[@]}")
@@ -18,6 +20,8 @@ detect_desktop_environment() {
         specific_remove_programs=()
         kde_environment=false
     fi
+    echo "Specific install programs: ${specific_install_programs[@]}"
+    echo "Specific remove programs: ${specific_remove_programs[@]}"
 }
 
 # Function to remove programs
@@ -25,9 +29,13 @@ remove_programs() {
     echo
     printf "Removing Programs... \n"
     echo
-    sudo dnf remove -y "${specific_remove_programs[@]}"
-    echo
-    printf "Programs removed successfully.\n"
+    if [ ${#specific_remove_programs[@]} -eq 0 ]; then
+        echo "No programs to remove."
+    else
+        sudo dnf remove -y "${specific_remove_programs[@]}"
+        echo
+        printf "Programs removed successfully.\n"
+    fi
 }
 
 # Function to install programs
@@ -35,9 +43,16 @@ install_programs() {
     echo
     printf "Installing Programs... \n"
     echo
-    sudo dnf install -y "${dnf_programs[@]}" "${essential_programs[@]}" "${specific_install_programs[@]}"
-    echo
-    printf "Programs installed successfully.\n"
+    if [ ${#dnf_programs[@]} -eq 0 ] && [ ${#essential_programs[@]} -eq 0 ] && [ ${#specific_install_programs[@]} -eq 0 ]; then
+        echo "No programs to install."
+    else
+        echo "DNF programs: ${dnf_programs[@]}"
+        echo "Essential programs: ${essential_programs[@]}"
+        echo "Specific install programs: ${specific_install_programs[@]}"
+        sudo dnf install -y "${dnf_programs[@]}" "${essential_programs[@]}" "${specific_install_programs[@]}"
+        echo
+        printf "Programs installed successfully.\n"
+    fi
 }
 
 # Main script
