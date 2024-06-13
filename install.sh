@@ -46,8 +46,10 @@ enable_rpm_fusion() {
 # Function to update the system
 update_system() {
     echo "Updating system..."
+    # Perform a full system upgrade and refresh the package cache
     sudo dnf upgrade --refresh -y
-    sudo dnf groupupdate core
+    # Update the core group of packages
+    sudo dnf groupupdate core -y
     echo "System updated successfully."
 }
 
@@ -81,8 +83,6 @@ enable_hw_video_acceleration() {
 
     # Swap mesa drivers if necessary
     sudo dnf install -y mesa-va-drivers mesa-vdpau-drivers  # Install if not already present
-    sudo dnf swap -y mesa-va-drivers mesa-va-drivers-freeworld
-    sudo dnf swap -y mesa-vdpau-drivers mesa-vdpau-drivers-freeworld
 
     # Upgrade all packages to ensure dependencies are correctly resolved
     sudo dnf upgrade -y
