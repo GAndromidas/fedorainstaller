@@ -1,7 +1,5 @@
 # Fedora Setup Script
 
-Run this command: curl -sSL https://github.com/GAndromidas/fedorainstaller/archive/main.tar.gz | tar -xz && cd fedorainstaller-main && ./install.sh
-
 ## Overview
 
 This Bash script automates system setup on Fedora 40, streamlining configurations and installations for a smoother experience.

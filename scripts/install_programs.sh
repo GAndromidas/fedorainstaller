@@ -106,18 +106,22 @@ kde_install_programs=(
 
 # KDE-specific programs to remove using dnf
 kde_remove_programs=(
-    htop
-    kontact
-    telepathy
-    kget
-    ktorrent
-    elisa-player
     dragonplayer
-    k3b
-    marble
-    parley
-    kiten
-    kalzium
+    elisa-player
+    htop
+    kaddressbook
+    kamoso
+    kmahjongg
+    kmail
+    kmines
+    kmouth
+    kolourpaint
+    korganizer
+    kpat
+    ktnef
+    neochat
+    pim-sieve-editor
+    skanpage
     # Add other KDE-specific programs to remove if needed
 )
 
