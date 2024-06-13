@@ -48,30 +48,17 @@ pacman_programs=(
     bleachbit
     btop
     cmatrix
-    curl
-    dosfstools
     fastfetch
-    flatpak
-    firewall-config
-    fwupd
     gamemode
     gamescope
     hwinfo
     inxi
     mangohud
     net-tools
-    ntfs-3g
-    p7zip
-    p7zip-plugins
     python3-speedtest-cli
     samba
-    sshfs
     sl
     unrar
-    unzip
-    util-linux-user
-    wget
-    xdg-desktop-portal-gtk
     zoxide
     # Add or remove programs as needed
 )

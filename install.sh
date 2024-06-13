@@ -158,6 +158,14 @@ install_dnf_plugins() {
     echo "DNF plugins installed successfully."
 }
 
+# Function to add Flathub repository
+add_flathub_repo() {
+    echo "Adding Flathub repository..."
+    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+    flatpak update
+    echo "Flathub repository added successfully."
+}
+
 # Function to install programs
 install_programs() {
     echo "Installing Programs..."
@@ -172,14 +180,6 @@ install_flatpak_programs() {
     echo "Installing Flatpak Programs..."
     (cd "$HOME/fedorainstaller/scripts" && ./install_flatpak_programs.sh)
     echo "Flatpak programs installed successfully."
-}
-
-# Function to add Flathub repository
-add_flathub_repo() {
-    echo "Adding Flathub repository..."
-    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    flatpak update
-    echo "Flathub repository added successfully."
 }
 
 # Function to enable services
@@ -322,8 +322,8 @@ change_shell_to_zsh
 move_zshrc
 install_starship
 install_dnf_plugins
-install_programs
 add_flathub_repo
+install_programs
 enable_services
 create_fastfetch_config
 configure_firewalld
