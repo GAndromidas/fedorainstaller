@@ -38,23 +38,6 @@ install_programs() {
     sudo dnf install -y "${pacman_programs[@]}" "${essential_programs[@]}" "${specific_install_programs[@]}"
     echo
     printf "Programs installed successfully.\n"
-
-    # If KDE environment and KDE Connect is installed, configure KDE Connect firewall rules
-    if $kde_environment && [[ " ${specific_install_programs[@]} " =~ " kdeconnect " ]]; then
-        enable_kde_connect_firewall
-    fi
-}
-
-# Function to enable KDE Connect firewall rules
-enable_kde_connect_firewall() {
-    echo
-    printf "Configuring KDE Connect Firewall Rules... \n"
-    echo
-    sudo firewall-cmd --add-port=1714-1764/tcp --permanent
-    sudo firewall-cmd --add-port=1714-1764/udp --permanent
-    sudo firewall-cmd --reload
-    echo
-    printf "KDE Connect Firewall Rules configured successfully.\n"
 }
 
 # Main script
@@ -73,7 +56,6 @@ pacman_programs=(
     fwupd
     gamemode
     gamescope
-
     hwinfo
     inxi
     mangohud
@@ -96,7 +78,6 @@ pacman_programs=(
 
 # Essential programs to install using dnf
 essential_programs=(
-    chromium
     discord
     filezilla
     firefox

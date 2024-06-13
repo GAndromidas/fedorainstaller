@@ -82,10 +82,18 @@ install_media_codecs() {
 # Function to enable hardware video acceleration
 enable_hw_video_acceleration() {
     echo "Enabling hardware video acceleration..."
+
+    # Install required packages if not already installed
     sudo dnf install -y ffmpeg ffmpeg-libs libva libva-utils
+
+    # Swap mesa drivers if necessary
+    sudo dnf install -y mesa-va-drivers mesa-vdpau-drivers  # Install if not already present
     sudo dnf swap -y mesa-va-drivers mesa-va-drivers-freeworld
     sudo dnf swap -y mesa-vdpau-drivers mesa-vdpau-drivers-freeworld
+
+    # Upgrade all packages to ensure dependencies are correctly resolved
     sudo dnf upgrade -y
+
     echo "Hardware video acceleration enabled successfully."
 }
 
@@ -215,7 +223,25 @@ configure_firewalld() {
     sudo systemctl start firewalld
     sudo systemctl enable firewalld
     sudo firewall-cmd --permanent --set-default-zone=public
-    sudo firewall-cmd --permanent --add-service=ssh
+
+    # Check if SSH service is already enabled
+    sudo firewall-cmd --permanent --list-services | grep -q "\bssh\b"
+    if [ $? -ne 0 ]; then
+        sudo firewall-cmd --permanent --add-service=ssh
+    else
+        echo "SSH service is already enabled. Skipping..."
+    fi
+
+    # Check if KDE Connect is installed
+    if rpm -q kdeconnect &> /dev/null; then
+        # KDE Connect is installed, enable ports
+        sudo firewall-cmd --permanent --add-port=1714-1764/tcp
+        sudo firewall-cmd --permanent --add-port=1714-1764/udp
+        echo "KDE Connect ports enabled."
+    else
+        echo "KDE Connect is not installed. Skipping port configuration."
+    fi
+
     sudo firewall-cmd --reload
     echo "Firewalld configured successfully."
 }
