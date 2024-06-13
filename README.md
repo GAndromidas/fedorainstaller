@@ -6,25 +6,30 @@ This Bash script automates system setup on Fedora 40, streamlining configuration
 
 ## Features
 
-- Sets up hostname.
-- Installs kernel headers.
-- Configures GRUB bootloader.
-- Enables password feedback in sudoers.
-- Configures DNF package manager.
-- Updates system packages.
-- Enables RPM Fusion repositories.
-- Adds Flathub repository.
-- Installs media codecs.
-- Enables hardware video acceleration.
-- Installs OpenH264 for Firefox.
-- Installs ZSH and Oh-My-ZSH.
-- Configures locales.
-- Installs DNF plugins.
-- Installs essential programs and utilities.
-- Enables essential system services.
-- Configures firewalld.
-- Clears unused packages and cache.
-- Cleans up after installation.
+- Sets hostname
+- Enables password feedback in sudo
+- Configures DNF package manager
+- Updates the system
+- Installs kernel headers
+- Enables RPM Fusion repositories for additional software
+- Adds Flathub repository for installing flatpak applications
+- Installs media codecs
+- Enables hardware video acceleration
+- Installs OpenH264 for Firefox web browser
+- Installs ZSH shell and Oh-My-ZSH framework
+- Installs ZSH plugins for auto-suggestions and syntax highlighting
+- Changes the default shell to ZSH
+- Configures ZSH with additional plugins
+- Installs Starship prompt theme (optional)
+- Installs DNF plugins for extended functionality
+- Installs programs from a separate script (located in fedorainstaller/scripts)
+- Installs flatpak applications from a separate script (located in fedorainstaller/scripts)
+- Enables system services like fstrim, bluetooth, ssh, and firewall
+- Creates a configuration file for the fastfetch system information tool
+- Configures firewalld for basic security
+- Cleans unused packages and cache
+- Deletes the fedorainstaller folder (optional - prompts for confirmation)
+- Reboots the system (optional - prompts for confirmation)
 
 ## Important
 
