@@ -46,18 +46,14 @@ install_programs() {
     echo
     printf "Installing Programs... \n"
     echo
-    if [ ${#dnf_programs[@]} -eq 0 ] && [ ${#essential_programs[@]} -eq 0 ] && [ ${#specific_install_programs[@]} -eq 0 ]; then
-        echo "No programs to install."
+    sudo dnf install -y "${dnf_programs[@]}" "${essential_programs[@]}" "${specific_install_programs[@]}"
+    if [ $? -eq 0 ]; then
+        echo
+        printf "Programs installed successfully.\n"
     else
-        echo "DNF programs: ${dnf_programs[@]}"
-        echo "Essential programs: ${essential_programs[@]}"
-        echo "Specific install programs: ${specific_install_programs[@]}"
-        sudo dnf install -y "${dnf_programs[@]}" "${essential_programs[@]}" "${specific_install_programs[@]}"
-        if [ $? -ne 0 ]; then
-            echo "Error installing programs."
-        else
-            echo "Programs installed successfully."
-        fi
+        echo
+        printf "Failed to install programs. Exiting...\n"
+        exit 1
     fi
 }
 
