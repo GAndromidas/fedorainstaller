@@ -35,7 +35,7 @@ install_programs() {
     echo
     printf "Installing Programs... \n"
     echo
-    sudo dnf install -y "${pacman_programs[@]}" "${essential_programs[@]}" "${specific_install_programs[@]}"
+    sudo dnf install -y "${dnf_programs[@]}" "${essential_programs[@]}" "${specific_install_programs[@]}"
     echo
     printf "Programs installed successfully.\n"
 }
@@ -43,7 +43,7 @@ install_programs() {
 # Main script
 
 # Programs to install using dnf
-pacman_programs=(
+dnf_programs=(
     android-tools
     bleachbit
     btop
