@@ -70,6 +70,7 @@ essential_programs=(
     #discord
     fastfetch
     filezilla
+    firewall-config
     gimp
     hwinfo
     inxi
