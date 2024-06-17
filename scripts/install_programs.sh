@@ -67,22 +67,21 @@ essential_programs=(
     cmatrix
     dnf5
     dnf5-plugins
-    discord
+    #discord
     fastfetch
     filezilla
-    gamemode
     gimp
     hwinfo
     inxi
-    lutris
-    mangohud
-    obs-studio
+    #lutris
+    #mangohud
+    #obs-studio
     python3-speedtest-cli
     samba
     sl
-    smplayer
-    steam
-    telegram
+    #smplayer
+    #steam
+    #telegram
     timeshift
     unrar
     zoxide
@@ -137,7 +136,7 @@ gnome_remove_programs=(
     gnome-music
     gnome-tour
     htop
-    snapshot
+    #snapshot
     totem
     # Add other GNOME-specific programs to remove if needed
 )
