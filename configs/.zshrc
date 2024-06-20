@@ -103,8 +103,8 @@ source $ZSH/oh-my-zsh.sh
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 # Update System
-alias sync='sudo dnf update --refresh'
-alias update='sudo dnf update && sudo dnf upgrade && sudo flatpak update'
+alias sync='sudo dnf5 update --refresh'
+alias update='sudo dnf5 update && sudo dnf5 upgrade && sudo flatpak update'
 
 # Alias's for multiple directory listing commands
 alias la='ls -Alh --color=always'  # show hidden files
@@ -123,7 +123,7 @@ alias lf="ls -l | egrep -v '^d'"   # files only
 alias ldir="ls -l | egrep '^d'"    # directories only
 
 # Clean System
-alias clean='sudo dnf -y autoremove && sudo dnf clean all'
+alias clean='sudo dnf5 -y autoremove && sudo dnf5 clean all'
 alias cache='rm -rf ~/.cache/*'
 
 # Restart and Shutdown
