@@ -68,6 +68,7 @@ essential_programs=(
     dnf5
     dnf5-plugins
     #discord
+    easyeffects
     fastfetch
     filezilla
     firewall-config
