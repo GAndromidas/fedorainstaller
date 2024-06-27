@@ -64,6 +64,7 @@ essential_programs=(
     android-tools
     bleachbit
     btop
+    chromium
     cmatrix
     dnf5
     dnf5-plugins
@@ -138,7 +139,7 @@ gnome_remove_programs=(
     gnome-music
     gnome-tour
     htop
-    #snapshot
+    snapshot
     totem
     # Add other GNOME-specific programs to remove if needed
 )
