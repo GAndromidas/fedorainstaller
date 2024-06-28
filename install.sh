@@ -1,299 +1,268 @@
 #!/bin/bash
 
 # Script: install.sh
-# Description: Script for setting up a Fedora 40 system with various configurations and installations.
+# Description: Script for setting up a Fedora system with various configurations and installations.
 # Author: George Andromidas
+
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
+# Function to print messages with colors
+print_info() {
+    echo -e "${CYAN}$1${RESET}"
+}
+
+print_success() {
+    echo -e "${GREEN}$1${RESET}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}$1${RESET}"
+}
+
+print_error() {
+    echo -e "${RED}$1${RESET}"
+}
 
 # Function to set the hostname
 set_hostname() {
-    echo "Please enter the desired hostname:"
+    print_info "Please enter the desired hostname:"
     read -p "Hostname: " hostname
     sudo hostnamectl set-hostname "$hostname"
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to set the hostname."
+        print_error "Error: Failed to set the hostname."
         exit 1
     else
-        echo "Hostname set to $hostname successfully."
+        print_success "Hostname set to $hostname successfully."
     fi
 }
 
 # Function to enable asterisks for password in sudoers
 enable_asterisks_sudo() {
-    echo "Enabling password feedback in sudoers..."
-    echo "Defaults pwfeedback" | sudo tee -a /etc/sudoers.d/pwfeedback
-    echo "Password feedback enabled in sudoers."
+    print_info "Enabling password feedback in sudoers..."
+    echo "Defaults pwfeedback" | sudo tee -a /etc/sudoers.d/pwfeedback > /dev/null
+    print_success "Password feedback enabled in sudoers."
 }
 
 # Function to configure DNF
 configure_dnf() {
-    echo "Configuring DNF..."
+    print_info "Configuring DNF..."
     sudo tee -a /etc/dnf/dnf.conf <<EOL
 fastestmirror=True
 max_parallel_downloads=10
 defaultyes=True
 EOL
-    echo "DNF configuration updated successfully."
+    print_success "DNF configuration updated successfully."
 }
 
 # Function to enable RPM Fusion repositories
 enable_rpm_fusion() {
-    echo "Enabling RPM Fusion repositories..."
+    print_info "Enabling RPM Fusion repositories..."
     sudo dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
     sudo dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
-    echo "RPM Fusion repositories enabled successfully."
+    print_success "RPM Fusion repositories enabled successfully."
 }
 
 # Function to update the system
 update_system() {
-    echo "Updating system..."
-    # Perform a full system upgrade and refresh the package cache
+    print_info "Updating system..."
     sudo dnf upgrade --refresh -y
-    # Update the core group of packages
     sudo dnf groupupdate core -y
-    echo "System updated successfully."
+    print_success "System updated successfully."
 }
 
 # Function to install kernel headers
 install_kernel_headers() {
-    echo "Installing kernel headers..."
+    print_info "Installing kernel headers..."
     sudo dnf install -y kernel-headers kernel-devel
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to install kernel headers."
+        print_error "Error: Failed to install kernel headers."
         exit 1
     else
-        echo "Kernel headers installed successfully."
+        print_success "Kernel headers installed successfully."
     fi
 }
 
 # Function to install media codecs
 install_media_codecs() {
-    echo "Installing media codecs..."
+    print_info "Installing media codecs..."
     sudo dnf install -y gstreamer1-plugins-{bad-\*,good-\*,base} gstreamer1-plugin-openh264 gstreamer1-libav --exclude=gstreamer1-plugins-bad-free-devel
     sudo dnf install -y lame\* --exclude=lame-devel
     sudo dnf group upgrade -y --with-optional Multimedia
-    echo "Media codecs installed successfully."
+    print_success "Media codecs installed successfully."
 }
 
 # Function to enable hardware video acceleration
 enable_hw_video_acceleration() {
-    echo "Enabling hardware video acceleration..."
-
-    # Install required packages if not already installed
+    print_info "Enabling hardware video acceleration..."
     sudo dnf install -y ffmpeg ffmpeg-libs libva libva-utils
-
-    # Swap mesa drivers if necessary
-    sudo dnf install -y mesa-va-drivers mesa-vdpau-drivers  # Install if not already present
-
-    # Upgrade all packages to ensure dependencies are correctly resolved
+    sudo dnf install -y mesa-va-drivers mesa-vdpau-drivers
     sudo dnf upgrade -y
-
-    echo "Hardware video acceleration enabled successfully."
+    print_success "Hardware video acceleration enabled successfully."
 }
 
 # Function to install OpenH264 for Firefox
 install_openh264_for_firefox() {
-    echo "Installing OpenH264 for Firefox..."
+    print_info "Installing OpenH264 for Firefox..."
     sudo dnf config-manager --set-enabled fedora-cisco-openh264
     sudo dnf install -y openh264 gstreamer1-plugin-openh264 mozilla-openh264
-    echo "OpenH264 for Firefox installed successfully."
+    print_success "OpenH264 for Firefox installed successfully."
 }
 
 # Function to install ZSH and Oh-My-ZSH
 install_zsh() {
-    echo "Installing ZSH and Oh-My-ZSH..."
+    print_info "Installing ZSH and Oh-My-ZSH..."
     sudo dnf install -y zsh
     yes | sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-    echo "ZSH and Oh-My-ZSH installed successfully."
+    print_success "ZSH and Oh-My-ZSH installed successfully."
 }
 
 # Function to install ZSH plugins
 install_zsh_plugins() {
-    echo "Installing ZSH plugins..."
+    print_info "Installing ZSH plugins..."
     git clone https://github.com/zsh-users/zsh-autosuggestions ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-    echo "ZSH plugins installed successfully."
+    print_success "ZSH plugins installed successfully."
 }
 
 # Function to change shell to ZSH
 change_shell_to_zsh() {
-    echo "Changing shell to ZSH..."
+    print_info "Changing shell to ZSH..."
     sudo chsh -s "$(which zsh)" $USER
-    echo "Shell changed to ZSH."
+    print_success "Shell changed to ZSH."
 }
 
 # Function to move .zshrc
 move_zshrc() {
-    echo "Copying .zshrc to Home Folder..."
-    cp "$HOME"/fedorainstaller/configs/.zshrc "$HOME"/
-
-    # Add plugins to .zshrc
-    echo "Configuring .zshrc for plugins..."
+    print_info "Copying .zshrc to Home Folder..."
+    cp "$HOME/fedorainstaller/configs/.zshrc" "$HOME/"
     sed -i '/^plugins=/c\plugins=(git zsh-autosuggestions zsh-syntax-highlighting)' "$HOME/.zshrc"
-
-    echo ".zshrc copied and configured successfully."
+    print_success ".zshrc copied and configured successfully."
 }
 
 # Function to install Starship prompt
 install_starship() {
-    echo "Installing Starship prompt..."
+    print_info "Installing Starship prompt..."
     curl -sS https://starship.rs/install.sh | sh -s -- -y
-
     if [ $? -eq 0 ]; then
-        echo "Starship prompt installed successfully."
         mkdir -p "$HOME/.config"
         if [ -f "$HOME/fedorainstaller/configs/starship.toml" ]; then
             mv "$HOME/fedorainstaller/configs/starship.toml" "$HOME/.config/starship.toml"
-            echo "starship.toml moved to $HOME/.config/"
+            print_success "Starship prompt installed successfully."
+            print_success "starship.toml moved to $HOME/.config/"
         else
-            echo "starship.toml not found in $HOME/fedorainstaller/configs/"
+            print_warning "starship.toml not found in $HOME/fedorainstaller/configs/"
         fi
     else
-        echo "Starship prompt installation failed."
+        print_error "Starship prompt installation failed."
     fi
 }
 
 # Function to add Flathub repository
 add_flathub_repo() {
-    echo "Adding Flathub repository..."
+    print_info "Adding Flathub repository..."
     sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
     sudo flatpak update
-    echo "Flathub repository added successfully."
+    print_success "Flathub repository added successfully."
 }
 
 # Function to install programs
 install_programs() {
-    echo "Installing Programs..."
+    print_info "Installing Programs..."
     (cd "$HOME/fedorainstaller/scripts" && ./install_programs.sh)
-    echo "Programs installed successfully."
-
+    print_success "Programs installed successfully."
     install_flatpak_programs
 }
 
 # Function to install flatpak programs
 install_flatpak_programs() {
-    echo "Installing Flatpak Programs..."
+    print_info "Installing Flatpak Programs..."
     (cd "$HOME/fedorainstaller/scripts" && ./install_flatpak_programs.sh)
-    echo "Flatpak programs installed successfully."
+    print_success "Flatpak programs installed successfully."
 }
 
 # Function to install multiple Nerd Fonts
 install_nerd_fonts() {
-    echo "Installing Nerd Fonts..."
-
-    # Create fonts directory if it doesn't exist
+    print_info "Installing Nerd Fonts..."
     mkdir -p ~/.local/share/fonts
-
-    # List of fonts to install
     fonts=("Hack" "FiraCode" "JetBrainsMono" "Noto")
-
     for font in "${fonts[@]}"; do
-        echo "Downloading and installing $font Nerd Font..."
-        wget -O "$font.zip" "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/$font.zip"
+        wget -O "$font.zip" "https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/$font.zip"
         unzip -o "$font.zip" -d ~/.local/share/fonts/
         rm "$font.zip"
     done
-
-    # Update font cache
     fc-cache -fv
-
-    echo "Nerd Fonts installed successfully."
+    print_success "Nerd Fonts installed successfully."
 }
 
 # Function to enable services
 enable_services() {
-    echo "Enabling Services..."
+    print_info "Enabling Services..."
     local services=(
         "fstrim.timer"
         "bluetooth"
         "sshd"
         "firewalld"
     )
-
     for service in "${services[@]}"; do
         sudo systemctl enable --now "$service"
     done
-
-    echo "Services enabled successfully."
+    print_success "Services enabled successfully."
 }
 
 # Function to create fastfetch config
 create_fastfetch_config() {
-    echo
-    printf "Creating fastfetch config... "
-    echo
+    print_info "Creating fastfetch config..."
     fastfetch --gen-config
-    echo
-    printf "fastfetch config created successfully.\n"
-
-    echo
-    printf "Copying fastfetch config from repository to ~/.config/fastfetch/... "
-    echo
-    cp "$HOME"/fedorainstaller/configs/config.jsonc "$HOME"/.config/fastfetch/config.jsonc
-    echo
-    printf "fastfetch config copied successfully.\n"
+    print_success "fastfetch config created successfully."
+    print_info "Copying fastfetch config from repository to ~/.config/fastfetch/..."
+    cp "$HOME/fedorainstaller/configs/config.jsonc" "$HOME/.config/fastfetch/config.jsonc"
+    print_success "fastfetch config copied successfully."
 }
 
 # Function to configure firewall
 configure_firewalld() {
-    echo "Configuring Firewalld..."
+    print_info "Configuring Firewalld..."
     sudo dnf install -y firewalld
     sudo systemctl start firewalld
     sudo systemctl enable firewalld
     sudo firewall-cmd --permanent --set-default-zone=public
-
-    # Check if SSH service is already enabled
-    sudo firewall-cmd --permanent --list-services | grep -q "\bssh\b"
-    if [ $? -ne 0 ]; then
-        sudo firewall-cmd --permanent --add-service=ssh
-    else
-        echo "SSH service is already enabled. Skipping..."
-    fi
-
-    # Check if KDE Connect is installed
+    sudo firewall-cmd --permanent --add-service=ssh
     if rpm -q kde-connect &> /dev/null; then
-        # KDE Connect is installed, enable ports
         sudo firewall-cmd --permanent --add-port=1714-1764/tcp
         sudo firewall-cmd --permanent --add-port=1714-1764/udp
-        echo "KDE Connect ports enabled."
-    else
-        echo "KDE Connect is not installed. Skipping port configuration."
     fi
-
     sudo firewall-cmd --reload
-    echo "Firewalld configured successfully."
+    print_success "Firewalld configured successfully."
 }
 
 # Function to clear unused packages and cache
 clear_unused_packages_cache() {
-    echo "Clearing Unused Packages and Cache..."
+    print_info "Clearing Unused Packages and Cache..."
     sudo dnf autoremove -y
     sudo dnf clean all
-    echo "Unused packages and cache cleared successfully."
+    print_success "Unused packages and cache cleared successfully."
 }
 
 # Function to delete the fedorainstaller folder
 delete_fedorainstaller_folder() {
-    echo "Deleting Fedorainstaller Folder..."
-    sudo rm -rf "$HOME"/fedorainstaller
-    echo "Fedorainstaller folder deleted successfully."
+    print_info "Deleting Fedorainstaller Folder..."
+    sudo rm -rf "$HOME/fedorainstaller"
+    print_success "Fedorainstaller folder deleted successfully."
 }
 
 # Function to reboot system
 reboot_system() {
-    echo "Rebooting System..."
-    echo "Press 'y' to reboot now, or 'n' to cancel."
-
+    print_info "Rebooting System..."
     read -p "Do you want to reboot now? (y/n): " confirm_reboot
-
-    while [[ ! "$confirm_reboot" =~ ^[yn]$ ]]; do
-        read -p "Invalid input. Please enter 'y' to reboot now or 'n' to cancel: " confirm_reboot
-    done
-
     if [[ "$confirm_reboot" == "y" ]]; then
-        echo "Rebooting now..."
         sudo reboot
     else
-        echo "Reboot canceled."
+        print_info "Reboot canceled."
     fi
 }
 
