@@ -139,6 +139,7 @@ gnome_remove_programs=(
     gnome-music
     gnome-tour
     htop
+    rhythmbox
     snapshot
     totem
     # Add other GNOME-specific programs to remove if needed
