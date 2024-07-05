@@ -27,7 +27,7 @@
         },
         {
             "type": "os",
-            "key": " "
+            "key": " 󰣇"
         },
         {
             "type": "kernel",
@@ -60,6 +60,7 @@
         },
         {
             "type": "gpu",
+            "detectionMethod": "pci",
             "key": " 󰍛"
         },
         {
