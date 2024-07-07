@@ -258,11 +258,29 @@ delete_fedorainstaller_folder() {
 # Function to reboot system
 reboot_system() {
     print_info "Rebooting System..."
-    read -p "Do you want to reboot now? (y/n): " confirm_reboot
+    printf "${YELLOW}Do you want to reboot now? (Y/n)${RESET} "
+
+    read -rp "" confirm_reboot
+
+    # Convert input to lowercase for case-insensitive comparison
+    confirm_reboot="${confirm_reboot,,}"
+
+    # Handle empty input (Enter pressed)
+    if [[ -z "$confirm_reboot" ]]; then
+        confirm_reboot="y"  # Apply "yes" if Enter is pressed
+    fi
+
+    # Validate input
+    while [[ ! "$confirm_reboot" =~ ^(y|n)$ ]]; do
+        read -rp "Invalid input. Please enter 'Y' to reboot now or 'n' to cancel: " confirm_reboot
+        confirm_reboot="${confirm_reboot,,}"
+    done
+
     if [[ "$confirm_reboot" == "y" ]]; then
+        print_info "Rebooting now..."
         sudo reboot
     else
-        print_info "Reboot canceled."
+        print_warning "Reboot canceled. You can reboot manually later by typing 'sudo reboot'."
     fi
 }
 
