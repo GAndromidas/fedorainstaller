@@ -68,23 +68,17 @@ essential_programs=(
     cmatrix
     dnf5
     dnf5-plugins
-    #discord
     easyeffects
+    eza
     fastfetch
     filezilla
     firewall-config
     gimp
     hwinfo
     inxi
-    #lutris
-    #mangohud
-    #obs-studio
     python3-speedtest-cli
     samba
     sl
-    #smplayer
-    #steam
-    #telegram
     timeshift
     unrar
     zoxide
