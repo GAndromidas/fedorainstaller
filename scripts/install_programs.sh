@@ -68,7 +68,6 @@ essential_programs=(
     cmatrix
     dnf5
     dnf5-plugins
-    easyeffects
     eza
     fastfetch
     filezilla
