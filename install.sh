@@ -173,7 +173,7 @@ add_flathub_repo() {
 # Function to install programs
 install_programs() {
     print_info "Installing Programs..."
-    (cd "$HOME/fedorainstaller/scripts" && ./install_programs.sh)
+    (cd "$HOME/fedorainstaller/scripts" && ./programs.sh)
     print_success "Programs installed successfully."
     install_flatpak_programs
 }
@@ -181,7 +181,7 @@ install_programs() {
 # Function to install flatpak programs
 install_flatpak_programs() {
     print_info "Installing Flatpak Programs..."
-    (cd "$HOME/fedorainstaller/scripts" && ./install_flatpak_programs.sh)
+    (cd "$HOME/fedorainstaller/scripts" && ./flatpak_programs.sh)
     print_success "Flatpak programs installed successfully."
 }
 
