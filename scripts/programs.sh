@@ -72,6 +72,7 @@ essential_programs=(
     fastfetch
     filezilla
     firewall-config
+    fzf
     gimp
     hwinfo
     inxi
