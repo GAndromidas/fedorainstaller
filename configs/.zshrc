@@ -21,7 +21,7 @@ source $ZSH/oh-my-zsh.sh
 # System maintenance aliases
 alias sync='sudo dnf update --refresh'
 alias update='sudo dnf update && sudo dnf upgrade && sudo flatpak update'
-alias clean='sudo dnf -y autoremove && sudo dnf clean all'
+alias clean='sudo dnf -y autoremove && sudo dnf clean all && sudo flatpak uninstall --unused'
 alias cache='rm -rf ~/.cache/*'
 alias microcode='grep . /sys/devices/system/cpu/vulnerabilities/*'
 alias sr='sudo reboot'
