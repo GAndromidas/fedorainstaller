@@ -2,7 +2,7 @@
 
 ## Overview
 
-This Bash script automates system setup on Fedora 40, streamlining configurations and installations for a smoother experience.
+This Bash script automates system setup on Fedora, streamlining configurations and installations for a smoother experience.
 
 ## Features
 
