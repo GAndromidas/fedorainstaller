@@ -64,16 +64,14 @@ essential_programs=(
     android-tools
     bleachbit
     btop
-    chromium
     cmatrix
-    dnf5
-    dnf5-plugins
     eza
     fastfetch
     filezilla
+    firefox
     firewall-config
     fzf
-    gimp
+    gnome-disk-utility
     hwinfo
     inxi
     python3-speedtest-cli
