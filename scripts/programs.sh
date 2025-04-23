@@ -47,7 +47,7 @@ install_programs() {
     # Enable COPR for 'eza' if not installed
     if ! command -v eza &> /dev/null; then
         echo "🔧 Enabling COPR for 'eza'..."
-        sudo dnf copr enable atim/eza -y
+        sudo dnf copr enable alternateved/eza -y
     fi
 
     # Combine essential + DE-specific
