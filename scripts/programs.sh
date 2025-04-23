@@ -1,65 +1,67 @@
 #!/bin/bash
 
-# Function to detect desktop environment and set specific programs to install or remove
+# Script: programs.sh
+# Description: Installs and removes packages based on detected desktop environment (GNOME/KDE).
+# Compatible with Fedora 42, including COPR support for 'eza'.
+
+# Function to detect the desktop environment
 detect_desktop_environment() {
-    echo "Detecting desktop environment..."
+    echo "🔍 Detecting desktop environment..."
+    local desktop="${XDG_CURRENT_DESKTOP,,}"  # lowercase
     echo "Current Desktop: $XDG_CURRENT_DESKTOP"
-    if [ "$XDG_CURRENT_DESKTOP" == "KDE" ]; then
-        echo "KDE detected."
+
+    if [[ "$desktop" == *"kde"* ]]; then
+        echo "🖼️  KDE detected."
         specific_install_programs=("${kde_install_programs[@]}")
         specific_remove_programs=("${kde_remove_programs[@]}")
-        kde_environment=true
-    elif [ "$XDG_CURRENT_DESKTOP" == "GNOME" ]; then
-        echo "GNOME detected."
+    elif [[ "$desktop" == *"gnome"* ]]; then
+        echo "🖼️  GNOME detected."
         specific_install_programs=("${gnome_install_programs[@]}")
         specific_remove_programs=("${gnome_remove_programs[@]}")
-        kde_environment=false
     else
-        echo "Unsupported desktop environment detected."
+        echo "⚠️  Unknown desktop environment. Proceeding with essential programs only."
         specific_install_programs=()
         specific_remove_programs=()
-        kde_environment=false
     fi
-    echo "Specific install programs: ${specific_install_programs[@]}"
-    echo "Specific remove programs: ${specific_remove_programs[@]}"
 }
 
-# Function to remove programs
+# Function to remove unwanted default programs
 remove_programs() {
-    echo
-    printf "Removing Programs... \n"
-    echo
+    echo -e "\n🔻 Removing unnecessary default programs..."
     if [ ${#specific_remove_programs[@]} -eq 0 ]; then
-        echo "No programs to remove."
+        echo "No default programs to remove."
+        return
+    fi
+
+    if ! sudo dnf remove -y "${specific_remove_programs[@]}"; then
+        echo "❌ Failed to remove one or more programs."
     else
-        sudo dnf remove -y "${specific_remove_programs[@]}"
-        if [ $? -ne 0 ]; then
-            echo "Error removing programs."
-        else
-            echo "Programs removed successfully."
-        fi
+        echo "✅ Unwanted programs removed successfully."
     fi
 }
 
-# Function to install programs
+# Function to install useful programs
 install_programs() {
-    echo
-    printf "Installing Programs... \n"
-    echo
-    sudo dnf install -y "${essential_programs[@]}" "${specific_install_programs[@]}"
-    if [ $? -eq 0 ]; then
-        echo
-        printf "Programs installed successfully.\n"
-    else
-        echo
-        printf "Failed to install programs. Exiting...\n"
+    echo -e "\n📦 Installing selected programs..."
+
+    # Enable COPR for 'eza' if not installed
+    if ! command -v eza &> /dev/null; then
+        echo "🔧 Enabling COPR for 'eza'..."
+        sudo dnf copr enable atim/eza -y
+    fi
+
+    # Combine essential + DE-specific
+    local all_programs=("${essential_programs[@]}" "${specific_install_programs[@]}")
+
+    if ! sudo dnf install -y "${all_programs[@]}"; then
+        echo "❌ Failed to install one or more packages."
         exit 1
+    else
+        echo -e "\n✅ All programs installed successfully!"
     fi
 }
 
-# Main script
-
-# Essential programs to install using dnf
+# Essential CLI and GUI programs (COPR: eza)
 essential_programs=(
     android-tools
     bleachbit
@@ -80,18 +82,15 @@ essential_programs=(
     timeshift
     unrar
     zoxide
-    # Add or remove essential programs as needed
 )
 
-# KDE-specific programs to install using dnf
+# KDE-specific installs and removals
 kde_install_programs=(
     kvantum
     qbittorrent
     vlc
-    # Add or remove KDE-specific programs as needed
 )
 
-# KDE-specific programs to remove using dnf
 kde_remove_programs=(
     dragonplayer
     elisa-player
@@ -109,10 +108,9 @@ kde_remove_programs=(
     neochat
     pim-sieve-editor
     skanpage
-    # Add other KDE-specific programs to remove if needed
 )
 
-# GNOME-specific programs to install using dnf
+# GNOME-specific installs and removals
 gnome_install_programs=(
     celluloid
     dconf-editor
@@ -120,10 +118,8 @@ gnome_install_programs=(
     gnome-tweaks
     seahorse
     transmission-gtk
-    # Add or remove GNOME-specific programs as needed
 )
 
-# GNOME-specific programs to remove using dnf
 gnome_remove_programs=(
     epiphany
     gnome-contacts
@@ -134,14 +130,9 @@ gnome_remove_programs=(
     rhythmbox
     snapshot
     totem
-    # Add other GNOME-specific programs to remove if needed
 )
 
-# Detect desktop environment
+# Execute workflow
 detect_desktop_environment
-
-# Remove specified programs
 remove_programs
-
-# Install specified programs
 install_programs
