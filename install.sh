@@ -184,21 +184,68 @@ install_flatpak_programs() {
 }
 
 install_nerd_fonts() {
-    print_info "Installing Nerd Fonts..."
+    print_info "Installing Hack Nerd Font..."
+    
+    # Create fonts directory if it doesn't exist
     mkdir -p ~/.local/share/fonts
-    fonts=("Hack" "FiraCode" "JetBrainsMono" "Noto")
-    for font in "${fonts[@]}"; do
-        url="https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/${font}.zip"
-        if curl --head --silent --fail "$url" > /dev/null; then
-            wget -O "$font.zip" "$url"
-            unzip -o "$font.zip" -d ~/.local/share/fonts/
-            rm "$font.zip"
+    
+    # Get the latest Nerd Fonts version from GitHub
+    print_info "Fetching latest Nerd Fonts version..."
+    NERD_FONT_VERSION=$(curl -s https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+    
+    if [ -z "$NERD_FONT_VERSION" ]; then
+        print_error "Failed to fetch latest Nerd Fonts version"
+        return 1
+    fi
+    
+    print_info "Latest Nerd Fonts version: ${NERD_FONT_VERSION}"
+    FONT_NAME="Hack"
+    
+    print_info "Installing $FONT_NAME Nerd Font..."
+    url="https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONT_VERSION}/${FONT_NAME}.zip"
+    
+    # Download and install font
+    if curl --head --silent --fail "$url" > /dev/null; then
+        wget -q --show-progress -O "/tmp/${FONT_NAME}.zip" "$url"
+        if [ $? -eq 0 ]; then
+            unzip -q -o "/tmp/${FONT_NAME}.zip" -d ~/.local/share/fonts/
+            rm "/tmp/${FONT_NAME}.zip"
+            print_success "Successfully installed $FONT_NAME Nerd Font"
+            
+            # Update font cache
+            fc-cache -fv
+            
+            # Set Hack Nerd Font as default for Konsole
+            if command -v konsole &>/dev/null; then
+                print_info "Setting Hack Nerd Font as default for Konsole..."
+                mkdir -p ~/.local/share/konsole
+                cat > ~/.local/share/konsole/Default.profile << EOF
+[Appearance]
+ColorScheme=Breeze
+Font=Hack Nerd Font,10,-1,5,50,0,0,0,0,0
+EOF
+                print_success "Konsole font configured"
+            fi
+            
+            # Set Hack Nerd Font as default for GNOME Terminal (kgx)
+            if command -v kgx &>/dev/null; then
+                print_info "Setting Hack Nerd Font as default for GNOME Terminal..."
+                gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \')/ font 'Hack Nerd Font 10'
+                print_success "GNOME Terminal font configured"
+            fi
+            
+            # Verify installation
+            if fc-list | grep -i "hack.*nerd" > /dev/null; then
+                print_success "Hack Nerd Font installed and configured successfully"
+            else
+                print_warning "Hack Nerd Font not found after installation. Please check the installation manually."
+            fi
         else
-            print_warning "$font.zip not found. Skipping..."
+            print_error "Failed to download Hack Nerd Font"
         fi
-    done
-    fc-cache -fv
-    print_success "Nerd Fonts installed successfully."
+    else
+        print_error "Hack Nerd Font not found at version ${NERD_FONT_VERSION}"
+    fi
 }
 
 enable_services() {
