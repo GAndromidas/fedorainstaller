@@ -73,6 +73,7 @@ essential_programs=(
     firefox
     firewall-config
     fzf
+    gamemode
     gnome-disk-utility
     hwinfo
     inxi
