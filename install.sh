@@ -117,9 +117,16 @@ enable_rpm_fusion() {
 update_system() {
     step "Update system"
     print_info "Updating system..."
-    sudo $DNF_CMD upgrade --refresh -y && sudo $DNF_CMD groupupdate core -y \
-        && print_success "System updated successfully." \
-        || print_error "System update failed."
+    if command -v dnf5 &> /dev/null; then
+        sudo dnf5 upgrade --refresh -y
+    else
+        sudo dnf upgrade --refresh -y
+    fi
+    if [ $? -eq 0 ]; then
+        print_success "System updated successfully."
+    else
+        print_error "System update failed."
+    fi
 }
 
 install_kernel_headers() {
