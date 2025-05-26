@@ -145,7 +145,14 @@ install_kernel_headers() {
 install_media_codecs() {
     step "Install media codecs"
     print_info "Installing media codecs (Fedora 42+ compatible)..."
-    sudo $DNF_CMD groupupdate --with-optional Multimedia -y
+
+    # Try to use group install, but don't fail if group not found
+    if $DNF_CMD group list --hidden | grep -q Multimedia; then
+        sudo $DNF_CMD group install --with-optional Multimedia -y \
+            && print_success "Multimedia group installed." \
+            || print_warning "Failed to install Multimedia group."
+    fi
+
     sudo $DNF_CMD install -y \
         gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free \
         gstreamer1-plugins-bad-freeworld gstreamer1-plugins-ugly gstreamer1-libav \
@@ -159,7 +166,6 @@ enable_hw_video_acceleration() {
     step "Enable hardware video acceleration"
     print_info "Enabling hardware video acceleration..."
     sudo $DNF_CMD install -y ffmpeg ffmpeg-libs libva libva-utils mesa-va-drivers mesa-vdpau-drivers \
-        && sudo $DNF_CMD upgrade -y \
         && print_success "Hardware video acceleration enabled successfully." \
         || print_error "Failed to enable hardware video acceleration."
     INSTALLED_PACKAGES+=(ffmpeg ffmpeg-libs libva libva-utils mesa-va-drivers mesa-vdpau-drivers)
