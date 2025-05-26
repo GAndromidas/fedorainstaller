@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Fedora Installer - Archinstaller Style - Enhanced Version
-
 DNF_CMD=$(command -v dnf5 || command -v dnf)
 CYAN='\033[0;36m'
 RESET='\033[0m'
