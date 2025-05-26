@@ -25,7 +25,7 @@ ERRORS=()
 INSTALLED_PACKAGES=()
 REMOVED_PACKAGES=()
 CURRENT_STEP=1
-TOTAL_STEPS=23 # update as needed
+TOTAL_STEPS=21 # update as needed
 
 #=== Logging and Progress ===#
 log()    { echo -e "$1" | tee -a "$LOGFILE"; }
@@ -140,35 +140,6 @@ install_kernel_headers() {
             || print_error "Failed to install kernel headers."
         INSTALLED_PACKAGES+=(kernel-headers kernel-devel)
     fi
-}
-
-install_media_codecs() {
-    step "Install media codecs"
-    print_info "Installing media codecs (Fedora 42+ compatible)..."
-
-    # Try to use group install, but don't fail if group not found
-    if $DNF_CMD group list --hidden | grep -q Multimedia; then
-        sudo $DNF_CMD group install --with-optional Multimedia -y \
-            && print_success "Multimedia group installed." \
-            || print_warning "Failed to install Multimedia group."
-    fi
-
-    sudo $DNF_CMD install -y \
-        gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free \
-        gstreamer1-plugins-bad-freeworld gstreamer1-plugins-ugly gstreamer1-libav \
-        lame\* --exclude=lame-devel x264 x265 a52dec faad2 faac libmad libdca \
-        && print_success "Media codecs installed successfully for Fedora 42." \
-        || print_error "Failed to install media codecs."
-    INSTALLED_PACKAGES+=(gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugins-bad-freeworld gstreamer1-plugins-ugly gstreamer1-libav x264 x265 a52dec faad2 faac libmad libdca)
-}
-
-enable_hw_video_acceleration() {
-    step "Enable hardware video acceleration"
-    print_info "Enabling hardware video acceleration..."
-    sudo $DNF_CMD install -y ffmpeg ffmpeg-libs libva libva-utils mesa-va-drivers mesa-vdpau-drivers \
-        && print_success "Hardware video acceleration enabled successfully." \
-        || print_error "Failed to enable hardware video acceleration."
-    INSTALLED_PACKAGES+=(ffmpeg ffmpeg-libs libva libva-utils mesa-va-drivers mesa-vdpau-drivers)
 }
 
 install_openh264_for_firefox() {
@@ -492,8 +463,6 @@ configure_dnf
 enable_rpm_fusion
 update_system
 install_kernel_headers
-install_media_codecs
-enable_hw_video_acceleration
 install_openh264_for_firefox
 
 install_zsh
