@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Fedora ASCII ART
+fedora_ascii() {
+  echo -e "${CYAN}"
+  cat << "EOF"
+  ______       _                 _____           _        _ _
+ |  ____|     | |               |_   _|         | |      | | |
+ | |__ ___  __| | ___  _ __ __ _  | |  _ __  ___| |_ __ _| | | ___ _ __
+ |  __/ _ \/ _` |/ _ \| '__/ _` | | | | '_ \/ __| __/ _` | | |/ _ \ '__|
+ | | |  __/ (_| | (_) | | | (_| |_| |_| | | \__ \ || (_| | | |  __/ |
+ |_|  \___|\__,_|\___/|_|  \__,_|_____|_| |_|___/\__\__,_|_|_|\___|_|
+EOF
+  echo -e "${RESET}"
+}
+
 DNF_CMD=$(command -v dnf5 || command -v dnf)
 CYAN='\033[0;36m'
 RESET='\033[0m'
@@ -8,13 +22,18 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 LOGFILE="$HOME/fedorainstaller/install.log"
 ERRORS=()
+INSTALLED_PACKAGES=()
+REMOVED_PACKAGES=()
+CURRENT_STEP=1
+TOTAL_STEPS=23 # update as needed
 
-#=== Printing/logging ===#
+#=== Logging and Progress ===#
 log()    { echo -e "$1" | tee -a "$LOGFILE"; }
 print_info()    { log "\n${CYAN}$1${RESET}\n"; }
 print_success() { log "\n${GREEN}[OK] $1${RESET}\n"; }
 print_warning() { log "\n${YELLOW}[WARN] $1${RESET}\n"; }
 print_error()   { log "\n${RED}[FAIL] $1${RESET}\n"; ERRORS+=("$1"); }
+step()   { echo -e "\n${CYAN}[$CURRENT_STEP/$TOTAL_STEPS] $1${RESET}"; ((CURRENT_STEP++)); }
 
 #=== Root check and sudo refresh ===#
 require_sudo() {
@@ -30,7 +49,7 @@ require_sudo() {
 check_dependencies() {
     local deps=("curl" "wget" "git" "unzip" "figlet" "fastfetch")
     local missing=()
-    print_info "Checking required dependencies..."
+    step "Checking required dependencies"
     for dep in "${deps[@]}"; do
         if ! command -v "$dep" &>/dev/null; then
             missing+=("$dep")
@@ -39,12 +58,14 @@ check_dependencies() {
     if [ "${#missing[@]}" -gt 0 ]; then
         print_info "Installing missing dependencies: ${missing[*]}"
         sudo $DNF_CMD install -y "${missing[@]}" || print_error "Failed to install dependencies: ${missing[*]}"
+        INSTALLED_PACKAGES+=("${missing[@]}")
     else
         print_success "All dependencies are present."
     fi
 }
 
 set_hostname() {
+    step "Set hostname"
     if command -v figlet >/dev/null; then figlet "Set Hostname"; else print_info "========== Set Hostname =========="; fi
     print_info "Please enter the desired hostname:"
     read -p "Hostname: " hostname
@@ -58,6 +79,7 @@ set_hostname() {
 }
 
 enable_asterisks_sudo() {
+    step "Enable password feedback for sudo"
     SUDOERS_FILE="/etc/sudoers.d/pwfeedback"
     if [ -f "$SUDOERS_FILE" ]; then
         print_warning "Password feedback already enabled in sudoers."
@@ -69,6 +91,7 @@ enable_asterisks_sudo() {
 }
 
 configure_dnf() {
+    step "Configure DNF"
     DNF_CONF="/etc/dnf/dnf.conf"
     print_info "Configuring DNF..."
     sudo grep -q '^fastestmirror=True' "$DNF_CONF" || echo "fastestmirror=True" | sudo tee -a "$DNF_CONF"
@@ -78,6 +101,7 @@ configure_dnf() {
 }
 
 enable_rpm_fusion() {
+    step "Enable RPM Fusion"
     print_info "Enabling RPM Fusion repositories..."
     if ! $DNF_CMD repolist | grep -q rpmfusion-free; then
         sudo $DNF_CMD install -y \
@@ -91,6 +115,7 @@ enable_rpm_fusion() {
 }
 
 update_system() {
+    step "Update system"
     print_info "Updating system..."
     sudo $DNF_CMD upgrade --refresh -y && sudo $DNF_CMD groupupdate core -y \
         && print_success "System updated successfully." \
@@ -98,6 +123,7 @@ update_system() {
 }
 
 install_kernel_headers() {
+    step "Install kernel headers"
     if rpm -q kernel-headers kernel-devel &>/dev/null; then
         print_warning "Kernel headers are already installed. Skipping."
     else
@@ -105,10 +131,12 @@ install_kernel_headers() {
         sudo $DNF_CMD install -y kernel-headers kernel-devel \
             && print_success "Kernel headers installed successfully." \
             || print_error "Failed to install kernel headers."
+        INSTALLED_PACKAGES+=(kernel-headers kernel-devel)
     fi
 }
 
 install_media_codecs() {
+    step "Install media codecs"
     print_info "Installing media codecs (Fedora 42+ compatible)..."
     sudo $DNF_CMD groupupdate --with-optional Multimedia -y
     sudo $DNF_CMD install -y \
@@ -117,26 +145,32 @@ install_media_codecs() {
         lame\* --exclude=lame-devel x264 x265 a52dec faad2 faac libmad libdca \
         && print_success "Media codecs installed successfully for Fedora 42." \
         || print_error "Failed to install media codecs."
+    INSTALLED_PACKAGES+=(gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugins-bad-freeworld gstreamer1-plugins-ugly gstreamer1-libav x264 x265 a52dec faad2 faac libmad libdca)
 }
 
 enable_hw_video_acceleration() {
+    step "Enable hardware video acceleration"
     print_info "Enabling hardware video acceleration..."
     sudo $DNF_CMD install -y ffmpeg ffmpeg-libs libva libva-utils mesa-va-drivers mesa-vdpau-drivers \
         && sudo $DNF_CMD upgrade -y \
         && print_success "Hardware video acceleration enabled successfully." \
         || print_error "Failed to enable hardware video acceleration."
+    INSTALLED_PACKAGES+=(ffmpeg ffmpeg-libs libva libva-utils mesa-va-drivers mesa-vdpau-drivers)
 }
 
 install_openh264_for_firefox() {
+    step "Install OpenH264 for Firefox"
     print_info "Installing OpenH264 for Firefox..."
     sudo $DNF_CMD install -y 'dnf-plugins-core'
     sudo $DNF_CMD config-manager --set-enabled fedora-cisco-openh264
     sudo $DNF_CMD install -y openh264 gstreamer1-plugin-openh264 mozilla-openh264 \
         && print_success "OpenH264 for Firefox installed successfully." \
         || print_error "Failed to install OpenH264 for Firefox."
+    INSTALLED_PACKAGES+=(openh264 gstreamer1-plugin-openh264 mozilla-openh264)
 }
 
 install_zsh() {
+    step "Install ZSH and plugins"
     if command -v zsh >/dev/null; then
         print_warning "zsh is already installed. Skipping."
     else
@@ -144,6 +178,7 @@ install_zsh() {
         sudo $DNF_CMD install -y zsh \
             && print_success "ZSH installed." \
             || print_error "Failed to install ZSH."
+        INSTALLED_PACKAGES+=(zsh)
     fi
     if [ -d "$HOME/.oh-my-zsh" ]; then
         print_warning "Oh-My-Zsh is already installed. Skipping."
@@ -156,6 +191,7 @@ install_zsh() {
 }
 
 install_zsh_plugins() {
+    step "Install ZSH plugins"
     ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
     if [ -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]; then
         print_warning "zsh-autosuggestions already installed. Skipping."
@@ -174,6 +210,7 @@ install_zsh_plugins() {
 }
 
 change_shell_to_zsh() {
+    step "Change shell to ZSH"
     if [ "$SHELL" = "$(which zsh)" ]; then
         print_warning "ZSH is already your default shell. Skipping."
     else
@@ -185,6 +222,7 @@ change_shell_to_zsh() {
 }
 
 move_zshrc() {
+    step "Setup .zshrc"
     print_info "Copying .zshrc to Home Folder..."
     if [ -f "$HOME/fedorainstaller/configs/.zshrc" ]; then
         cp "$HOME/fedorainstaller/configs/.zshrc" "$HOME/"
@@ -196,6 +234,7 @@ move_zshrc() {
 }
 
 install_starship() {
+    step "Install Starship prompt"
     if command -v starship >/dev/null; then
         print_warning "starship is already installed. Skipping."
     else
@@ -203,6 +242,7 @@ install_starship() {
         curl -sS https://starship.rs/install.sh | sh -s -- -y \
             && print_success "Starship prompt installed successfully." \
             || print_error "Failed to install Starship."
+        INSTALLED_PACKAGES+=(starship)
     fi
     mkdir -p "$HOME/.config"
     if [ -f "$HOME/fedorainstaller/configs/starship.toml" ]; then
@@ -214,9 +254,11 @@ install_starship() {
 }
 
 add_flathub_repo() {
+    step "Enable Flathub"
     if ! command -v flatpak &>/dev/null; then
         print_info "Flatpak not found. Installing..."
         sudo $DNF_CMD install -y flatpak
+        INSTALLED_PACKAGES+=(flatpak)
     fi
     print_info "Adding Flathub repository..."
     sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
@@ -225,6 +267,7 @@ add_flathub_repo() {
 }
 
 install_programs() {
+    step "Install user programs"
     print_info "Installing Programs..."
     if [ -f "$HOME/fedorainstaller/scripts/programs.sh" ]; then
         (cd "$HOME/fedorainstaller/scripts" && ./programs.sh) \
@@ -237,6 +280,7 @@ install_programs() {
 }
 
 install_flatpak_programs() {
+    step "Install flatpak programs"
     print_info "Installing Flatpak Programs..."
     if [ -f "$HOME/fedorainstaller/scripts/flatpak_programs.sh" ]; then
         (cd "$HOME/fedorainstaller/scripts" && ./flatpak_programs.sh) \
@@ -248,6 +292,7 @@ install_flatpak_programs() {
 }
 
 install_nerd_fonts() {
+    step "Install Nerd Font"
     FONT_NAME="Hack"
     FONT_DIR="$HOME/.local/share/fonts"
     if fc-list | grep -i "hack.*nerd" > /dev/null; then
@@ -278,6 +323,7 @@ install_nerd_fonts() {
 }
 
 enable_services() {
+    step "Enable services"
     print_info "Enabling Services..."
     services=("fstrim.timer" "bluetooth" "sshd" "firewalld")
     for service in "${services[@]}"; do
@@ -292,6 +338,7 @@ enable_services() {
 }
 
 create_fastfetch_config() {
+    step "Setup fastfetch config"
     if [ -f "$HOME/.config/fastfetch/config.jsonc" ]; then
         print_warning "fastfetch config already exists. Skipping."
     else
@@ -308,6 +355,7 @@ create_fastfetch_config() {
 }
 
 configure_firewalld() {
+    step "Configure firewalld"
     print_info "Configuring Firewalld..."
     sudo $DNF_CMD install -y firewalld
     sudo systemctl enable --now firewalld
@@ -322,6 +370,7 @@ configure_firewalld() {
 }
 
 clear_unused_packages_cache() {
+    step "Clear unused packages and cache"
     print_info "Clearing Unused Packages and Cache..."
     sudo $DNF_CMD autoremove -y
     sudo $DNF_CMD clean all
@@ -329,6 +378,7 @@ clear_unused_packages_cache() {
 }
 
 install_fail2ban() {
+    step "Install/configure fail2ban"
     if command -v figlet >/dev/null; then
         figlet "Fail2ban"
     else
@@ -346,6 +396,7 @@ install_fail2ban() {
                     sudo systemctl enable --now fail2ban \
                         && print_success "Fail2ban installed and started." \
                         || print_error "Failed to install or start Fail2ban."
+                    INSTALLED_PACKAGES+=(fail2ban)
                 fi
                 break
                 ;;
@@ -361,9 +412,34 @@ install_fail2ban() {
 }
 
 delete_fedorainstaller_folder() {
+    step "Delete installer folder"
     print_info "Deleting fedorainstaller folder..."
     rm -rf "$HOME/fedorainstaller"
     print_success "fedorainstaller folder deleted successfully."
+}
+
+print_summary() {
+  echo -e "\n${CYAN}========= INSTALL SUMMARY =========${RESET}"
+  if [ ${#INSTALLED_PACKAGES[@]} -gt 0 ]; then
+    echo -e "${GREEN}Installed:${RESET} ${INSTALLED_PACKAGES[*]}"
+  else
+    echo -e "${YELLOW}No new packages were installed.${RESET}"
+  fi
+  if [ ${#REMOVED_PACKAGES[@]} -gt 0 ]; then
+    echo -e "${RED}Removed:${RESET} ${REMOVED_PACKAGES[*]}"
+  else
+    echo -e "${GREEN}No packages were removed.${RESET}"
+  fi
+  echo -e "${CYAN}===================================${RESET}"
+  if [ ${#ERRORS[@]} -gt 0 ]; then
+    echo -e "\n${RED}The following steps failed:${RESET}\n"
+    for err in "${ERRORS[@]}"; do
+      echo -e "${YELLOW}  - $err${RESET}"
+    done
+    echo -e "\n${YELLOW}Check the install log for more details: ${CYAN}$LOGFILE${RESET}\n"
+  else
+    echo -e "\n${GREEN}All steps completed successfully!${RESET}\n"
+  fi
 }
 
 reboot_system() {
@@ -389,10 +465,11 @@ reboot_system() {
 }
 
 #=== Main Execution ===#
-
 exec > >(tee -a "$LOGFILE") 2>&1
 
 clear
+fedora_ascii
+
 require_sudo
 check_dependencies
 
@@ -405,6 +482,7 @@ install_kernel_headers
 install_media_codecs
 enable_hw_video_acceleration
 install_openh264_for_firefox
+
 install_zsh
 install_zsh_plugins
 change_shell_to_zsh
@@ -418,6 +496,8 @@ create_fastfetch_config
 configure_firewalld
 clear_unused_packages_cache
 install_fail2ban
+
+print_summary
 
 if [ ${#ERRORS[@]} -eq 0 ]; then
     delete_fedorainstaller_folder
