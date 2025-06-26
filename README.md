@@ -1,8 +1,29 @@
-# Fedora Setup Script
+# Fedorainstaller: Fedora Post-Installation Script
+
+---
 
 ## Overview
 
-This Bash script automates system setup on Fedora, streamlining configurations and installations for a smoother experience.
+**Fedorainstaller** automates your Fedora post-install setup. It configures your system, installs essential and optional packages, and customizes your environment—all with minimal user input.
+
+- **Streamlined setup:** Handles system configuration, package installation, and service management.
+- **Modular scripts:** Easily customize what gets installed.
+- **Idempotent:** Safe to run multiple times.
+
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/gandromidas/fedorainstaller && cd fedorainstaller
+chmod +x install.sh
+./install.sh
+```
+
+- Run as a regular user with sudo privileges.
+- Follow the interactive prompts.
+
+---
 
 ## Features
 
@@ -22,23 +43,51 @@ This Bash script automates system setup on Fedora, streamlining configurations a
 - Configures ZSH with additional plugins
 - Installs Starship prompt theme (optional)
 - Installs DNF plugins for extended functionality
-- Installs programs from a separate script (located in fedorainstaller/scripts)
-- Installs flatpak applications from a separate script (located in fedorainstaller/scripts)
+- Installs programs from a separate script (`fedorainstaller/scripts/programs.sh`)
+- Installs flatpak applications from a separate script (`fedorainstaller/scripts/flatpak_programs.sh`)
 - Enables system services like fstrim, bluetooth, ssh, and firewall
 - Creates a configuration file for the fastfetch system information tool
 - Configures firewalld for basic security
 - Cleans unused packages and cache
-- Deletes the fedorainstaller folder (optional - prompts for confirmation)
-- Reboots the system (optional - prompts for confirmation)
+- Optionally deletes the fedorainstaller folder (prompts for confirmation)
+- Optionally reboots the system (prompts for confirmation)
 
-## Important
+---
 
-- Review the script before execution for customization.
-- Ensure necessary permissions to execute the script.
-- Recommended for fresh Fedora 40 installations.
-- Some steps may require internet access.
-- The script will prompt for system reboot after completion.
+## Structure
+
+- `install.sh` — Main script
+- `scripts/` — Modular sub-scripts (programs, flatpak_programs, etc.)
+- `configs/` — Config templates
+
+---
+
+## Customization
+
+- Edit package lists in `scripts/programs.sh` and `scripts/flatpak_programs.sh` for custom installs.
+- Review and adjust configuration files in `configs/` as needed.
+
+---
+
+## FAQ
+
+- **Should I run as root?** No, use a regular user with sudo privileges.
+- **What Fedora versions are supported?** Recommended for fresh Fedora 40 installations.
+- **What if something fails?** Check the terminal output for errors.
+- **Is internet required?** Yes, for most installation steps.
+
+---
+
+## Contributing
+
+Pull requests are welcome! Please follow the code style and add comments where needed.
+
+---
 
 ## License
 
-This project is under the [MIT License](LICENSE).
+MIT — see [LICENSE](LICENSE).
+
+---
+
+_Enjoy your automated Fedora setup!_
