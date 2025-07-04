@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "$0")/../common.sh"
 # Clean up unused packages and cache
 step "Clean up unused packages and cache"
 print_info "Removing unused packages and cleaning cache..."

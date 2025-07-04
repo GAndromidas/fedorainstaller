@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "$0")/../common.sh"
 # Configure firewalld with basic rules
 step "Configure firewalld"
 print_info "Configuring firewalld..."

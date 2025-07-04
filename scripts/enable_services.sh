@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "$0")/../common.sh"
 # Enable and start required systemd services
 step "Enable system services"
 print_info "Enabling and starting systemd services..."

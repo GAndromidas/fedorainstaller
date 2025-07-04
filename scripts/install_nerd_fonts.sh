@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "$0")/../common.sh"
 # Install Nerd Fonts for all users
 step "Install Nerd Fonts"
 print_info "Installing Nerd Fonts..."

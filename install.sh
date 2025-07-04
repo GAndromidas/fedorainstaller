@@ -73,10 +73,11 @@ run_step bootloader_config
 run_step clear_unused_packages_cache
 run_step install_fail2ban
 
-print_summary
-
+# Check if there were any errors
 if [ ${#ERRORS[@]} -eq 0 ]; then
+    print_summary 0
     prompt_reboot 0
 else
+    print_summary 1
     prompt_reboot 1
 fi

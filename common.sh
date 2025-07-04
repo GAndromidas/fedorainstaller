@@ -266,8 +266,21 @@ prompt_reboot() {
     else
         print_warning "Some steps failed. The fedorainstaller folder was NOT deleted for troubleshooting."
         print_warning "Review the log at $LOGFILE"
-        for err in "${ERRORS[@]}"; do
-            print_error "$err"
-        done
+        if [ ${#ERRORS[@]} -gt 0 ]; then
+            for err in "${ERRORS[@]}"; do
+                print_error "$err"
+            done
+        fi
+    fi
+}
+
+print_summary() {
+    local errors_present="$1"
+    if [ "$errors_present" = "0" ]; then
+        print_success "Installation completed successfully!"
+        print_info "All packages and configurations have been installed."
+    else
+        print_warning "Installation completed with some errors."
+        print_info "Review the errors above and check the log at $LOGFILE"
     fi
 }

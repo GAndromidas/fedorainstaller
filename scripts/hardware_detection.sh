@@ -33,11 +33,11 @@ if [ "$CPU_VENDOR" = "intel" ]; then
 elif [ "$CPU_VENDOR" = "amd" ]; then
     print_info "Installing AMD microcode..."
     if ! rpm -q amd-microcode >/dev/null 2>&1; then
-        if sudo $DNF_CMD install -y amd-microcode; then
+        if sudo $DNF_CMD install -y amd-microcode 2>/dev/null; then
             print_success "AMD microcode installed successfully."
             INSTALLED_PACKAGES+=(amd-microcode)
         else
-            print_error "Failed to install AMD microcode."
+            print_warning "AMD microcode package not available in repositories. Skipping."
         fi
     else
         print_warning "AMD microcode is already installed. Skipping."
@@ -127,7 +127,6 @@ case "$GPU_VENDOR" in
         print_info "Installing Intel graphics drivers and utilities..."
         INTEL_PACKAGES=(
             "mesa-vulkan-drivers"
-            "lib32-mesa-vulkan-drivers"
             "vulkan-tools"
             "intel-media-driver"
         )
@@ -135,16 +134,29 @@ case "$GPU_VENDOR" in
         for package in "${INTEL_PACKAGES[@]}"; do
             if ! rpm -q "$package" >/dev/null 2>&1; then
                 print_info "Installing $package..."
-                if sudo $DNF_CMD install -y "$package"; then
+                if sudo $DNF_CMD install -y "$package" 2>/dev/null; then
                     print_success "$package installed successfully."
                     INSTALLED_PACKAGES+=("$package")
                 else
-                    print_error "Failed to install $package."
+                    print_warning "Failed to install $package. Package may not be available."
                 fi
             else
                 print_warning "$package is already installed. Skipping."
             fi
         done
+        
+        # Try to install lib32-mesa-vulkan-drivers separately
+        if ! rpm -q lib32-mesa-vulkan-drivers >/dev/null 2>&1; then
+            print_info "Installing lib32-mesa-vulkan-drivers..."
+            if sudo $DNF_CMD install -y lib32-mesa-vulkan-drivers 2>/dev/null; then
+                print_success "lib32-mesa-vulkan-drivers installed successfully."
+                INSTALLED_PACKAGES+=(lib32-mesa-vulkan-drivers)
+            else
+                print_warning "lib32-mesa-vulkan-drivers not available. Skipping."
+            fi
+        else
+            print_warning "lib32-mesa-vulkan-drivers is already installed. Skipping."
+        fi
         ;;
 esac
 
@@ -154,7 +166,6 @@ HARDWARE_PACKAGES=(
     "lshw"
     "dmidecode"
     "cpuid"
-    "stress-ng"
     "lm_sensors"
 )
 
@@ -189,19 +200,32 @@ fi
 # Install additional hardware monitoring tools
 print_info "Installing hardware monitoring tools..."
 MONITORING_PACKAGES=(
-    "psensor"
-    "hardinfo"
     "gwe"
 )
 
 for package in "${MONITORING_PACKAGES[@]}"; do
     if ! command -v "$package" >/dev/null; then
         print_info "Installing $package..."
-        if sudo $DNF_CMD install -y "$package"; then
+        if sudo $DNF_CMD install -y "$package" 2>/dev/null; then
             print_success "$package installed successfully."
             INSTALLED_PACKAGES+=("$package")
         else
-            print_error "Failed to install $package."
+            print_warning "Failed to install $package. Package may not be available."
+        fi
+    else
+        print_warning "$package is already installed. Skipping."
+    fi
+done
+
+# Try to install psensor and hardinfo separately
+for package in psensor hardinfo; do
+    if ! command -v "$package" >/dev/null; then
+        print_info "Installing $package..."
+        if sudo $DNF_CMD install -y "$package" 2>/dev/null; then
+            print_success "$package installed successfully."
+            INSTALLED_PACKAGES+=("$package")
+        else
+            print_warning "Failed to install $package. Package may not be available."
         fi
     else
         print_warning "$package is already installed. Skipping."
