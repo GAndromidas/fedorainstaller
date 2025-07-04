@@ -22,36 +22,6 @@ if findmnt -n -o FSTYPE / | grep -q btrfs; then
         print_warning "Timeshift is already installed. Skipping."
     fi
     
-    # Check if grub-btrfs is available and install if needed
-    if ! rpm -q grub-btrfs >/dev/null 2>&1; then
-        print_info "Checking for grub-btrfs package..."
-        if sudo $DNF_CMD search grub-btrfs | grep -q grub-btrfs; then
-            print_info "Installing grub-btrfs for Btrfs snapshot boot entries..."
-            if sudo $DNF_CMD install -y grub-btrfs; then
-                print_success "grub-btrfs installed successfully."
-                INSTALLED_PACKAGES+=(grub-btrfs)
-                
-                # Enable grub-btrfs service
-                if systemctl is-enabled grub-btrfsd >/dev/null 2>&1; then
-                    print_info "grub-btrfsd service is already enabled."
-                else
-                    print_info "Enabling grub-btrfsd service..."
-                    if sudo systemctl enable grub-btrfsd; then
-                        print_success "grub-btrfsd service enabled."
-                    else
-                        print_error "Failed to enable grub-btrfsd service."
-                    fi
-                fi
-            else
-                print_error "Failed to install grub-btrfs."
-            fi
-        else
-            print_warning "grub-btrfs package not available in repositories. Skipping."
-        fi
-    else
-        print_warning "grub-btrfs is already installed. Skipping."
-    fi
-    
     # Check for btrfs-progs (should be installed by default, but let's make sure)
     if ! command -v btrfs >/dev/null; then
         print_info "Installing btrfs-progs..."
@@ -69,6 +39,7 @@ if findmnt -n -o FSTYPE / | grep -q btrfs; then
     if command -v timeshift >/dev/null && [ ! -f /etc/timeshift/timeshift.json ]; then
         print_info "Would you like to create initial Timeshift configuration? (y/N): "
         read -r response
+        response="${response:-N}"  # Default to N if empty
         if [[ "$response" =~ ^[Yy]$ ]]; then
             print_info "Creating initial Timeshift configuration..."
             if sudo timeshift --create --comments "Initial snapshot"; then
