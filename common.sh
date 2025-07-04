@@ -246,8 +246,6 @@ enable_sudo_pwfeedback() {
     fi
 }
 
-
-
 install_flatpak_app() {
     local app="$1"
     local timeout_seconds="${2:-600}"
