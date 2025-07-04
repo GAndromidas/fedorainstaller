@@ -166,7 +166,6 @@ HARDWARE_PACKAGES=(
     "lshw"
     "dmidecode"
     "cpuid"
-    "lm_sensors"
 )
 
 for package in "${HARDWARE_PACKAGES[@]}"; do
@@ -196,26 +195,6 @@ if command -v sensors >/dev/null; then
         print_warning "lm_sensors is already configured. Skipping."
     fi
 fi
-
-# Install additional hardware monitoring tools
-print_info "Installing hardware monitoring tools..."
-MONITORING_PACKAGES=(
-    "gwe"
-)
-
-for package in "${MONITORING_PACKAGES[@]}"; do
-    if ! command -v "$package" >/dev/null; then
-        print_info "Installing $package..."
-        if sudo $DNF_CMD install -y "$package" 2>/dev/null; then
-            print_success "$package installed successfully."
-            INSTALLED_PACKAGES+=("$package")
-        else
-            print_warning "Failed to install $package. Package may not be available."
-        fi
-    else
-        print_warning "$package is already installed. Skipping."
-    fi
-done
 
 # Try to install psensor and hardinfo separately
 for package in psensor hardinfo; do
