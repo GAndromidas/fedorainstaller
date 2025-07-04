@@ -207,6 +207,42 @@ install_programs_from_yaml() {
     fi
 }
 
+require_sudo() {
+    if [ "$EUID" -eq 0 ]; then
+        print_error "This script should not be run as root. Please run as a regular user."
+        exit 1
+    fi
+    
+    if ! sudo -n true 2>/dev/null; then
+        print_info "This script requires sudo privileges. Please enter your password when prompted."
+        sudo -v
+    fi
+}
+
+check_dependencies() {
+    local missing_deps=()
+    
+    # Check for essential commands
+    for cmd in curl git; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            missing_deps+=("$cmd")
+        fi
+    done
+    
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        print_info "Installing missing dependencies: ${missing_deps[*]}"
+        sudo $DNF_CMD install -y "${missing_deps[@]}"
+    fi
+}
+
+delete_fedorainstaller_folder() {
+    if [ -d "$HOME/fedorainstaller" ]; then
+        print_info "Cleaning up installer files..."
+        rm -rf "$HOME/fedorainstaller"
+        print_success "Installer files cleaned up."
+    fi
+}
+
 prompt_reboot() {
     local errors_present="$1"
     if [ "$errors_present" = "0" ]; then
