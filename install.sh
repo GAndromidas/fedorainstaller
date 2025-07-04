@@ -2,6 +2,9 @@
 
 source "$(dirname "$0")/common.sh"
 
+# Start timing the installation
+START_TIME=$(date +%s)
+
 # Fedora ASCII ART
 fedora_ascii() {
   echo -e "${CYAN}"

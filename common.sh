@@ -244,13 +244,25 @@ prompt_reboot() {
     fi
 }
 
+# Performance tracking
+log_performance() {
+    local step_name="$1"
+    local current_time=$(date +%s)
+    local elapsed=$((current_time - START_TIME))
+    local minutes=$((elapsed / 60))
+    local seconds=$((elapsed % 60))
+    echo -e "${CYAN}$step_name completed in ${minutes}m ${seconds}s (${elapsed}s)${RESET}"
+}
+
 print_summary() {
     local errors_present="$1"
     if [ "$errors_present" = "0" ]; then
         print_success "Installation completed successfully!"
         print_info "All packages and configurations have been installed."
+        log_performance "Total installation time"
     else
         print_warning "Installation completed with some errors."
         print_info "Review the errors above and check the log at $LOGFILE"
+        log_performance "Total installation time"
     fi
 }
