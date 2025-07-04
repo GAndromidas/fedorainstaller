@@ -85,33 +85,6 @@ else
     fi
 fi
 
-# Install appropriate microcode
-if [ "$CPU_VENDOR" = "intel" ]; then
-    print_info "Installing Intel microcode..."
-    if ! rpm -q intel-microcode >/dev/null 2>&1; then
-        if sudo $DNF_CMD install -y intel-microcode; then
-            print_success "Intel microcode installed successfully."
-            INSTALLED_PACKAGES+=(intel-microcode)
-        else
-            print_error "Failed to install Intel microcode."
-        fi
-    else
-        print_warning "Intel microcode is already installed. Skipping."
-    fi
-elif [ "$CPU_VENDOR" = "amd" ]; then
-    print_info "Installing AMD microcode..."
-    if ! rpm -q amd-microcode >/dev/null 2>&1; then
-        if sudo $DNF_CMD install -y amd-microcode 2>/dev/null; then
-            print_success "AMD microcode installed successfully."
-            INSTALLED_PACKAGES+=(amd-microcode)
-        else
-            print_warning "AMD microcode package not available in repositories. Skipping."
-        fi
-    else
-        print_warning "AMD microcode is already installed. Skipping."
-    fi
-fi
-
 # Detect GPU vendor
 print_info "Detecting GPU vendor..."
 GPU_VENDOR=""
