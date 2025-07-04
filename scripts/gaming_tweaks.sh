@@ -4,9 +4,10 @@ source "$(dirname "$0")/../common.sh"
 
 step "Gaming and performance tweaks"
 
-# Check if user wants gaming tweaks
+# Check if user wants gaming tweaks (default to No)
 print_info "Would you like to install gaming and performance tweaks? (y/N): "
 read -r response
+response="${response:-N}"  # Default to N if empty
 if [[ ! "$response" =~ ^[Yy]$ ]]; then
     print_info "Gaming tweaks skipped."
     exit 0
