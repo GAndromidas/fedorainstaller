@@ -183,7 +183,5 @@ desktop_environments:
 
 # COPR repositories to enable
 copr:
-  - repo: "eget/eget"
-    description: "eget - Easy pre-built binary installer"
   - repo: "alternateved/eza"
     description: "eza - Modern replacement for ls"
