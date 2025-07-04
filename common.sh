@@ -284,12 +284,21 @@ delete_fedorainstaller_folder() {
 prompt_reboot() {
     local errors_present="$1"
     if [ "$errors_present" = "0" ]; then
+        echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+        echo -e "${CYAN}🔄 SYSTEM REBOOT${RESET}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+        
         if command -v figlet >/dev/null; then
-            figlet "Reboot System"
+            echo -e "${CYAN}"
+            figlet "System Reboot"
+            echo -e "${RESET}"
         else
-            echo -e "${CYAN}========== Reboot System ==========${RESET}"
+            echo -e "${CYAN}========== System Reboot ==========${RESET}"
         fi
-        read -p "Installation complete. Press Y to clean up installer files and reboot, or any other key to exit without reboot: " confirm
+        
+        echo -e "${CYAN}Installation completed successfully!${RESET}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+        read -p "Press Y to clean up installer files and reboot, or any other key to exit without reboot: " confirm
         if [[ "$confirm" =~ ^[Yy]$ ]]; then
             delete_fedorainstaller_folder
             # Uninstall figlet before reboot if installed
@@ -301,7 +310,11 @@ prompt_reboot() {
         else
             print_info "Reboot cancelled. Installer files not deleted."
         fi
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
     else
+        echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+        echo -e "${RED}⚠️  INSTALLATION COMPLETED WITH ERRORS${RESET}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
         print_warning "Some steps failed. The fedorainstaller folder was NOT deleted for troubleshooting."
         print_warning "Review the log at $LOGFILE"
         if [ ${#ERRORS[@]} -gt 0 ]; then
@@ -309,6 +322,7 @@ prompt_reboot() {
                 print_error "$err"
             done
         fi
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
     fi
 }
 

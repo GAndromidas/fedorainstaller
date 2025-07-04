@@ -27,21 +27,30 @@ show_menu
 require_sudo
 check_dependencies
 
-# Step functions
+# Step functions - organized by category
 declare -A STEP_FUNCS=(
+  # System setup
   [set_hostname]="scripts/set_hostname.sh"
   [system_update_and_repos]="scripts/system_update_and_repos.sh"
+  
+  # Terminal and shell customization
   [terminal_customization]="scripts/terminal_customization.sh"
   [install_nerd_fonts]="scripts/install_nerd_fonts.sh"
+  
+  # Package installation
   [enable_codecs]="scripts/enable_codecs.sh"
   [btrfs_tweaks]="scripts/btrfs_tweaks.sh"
   [gaming_tweaks]="scripts/gaming_tweaks.sh"
   [hardware_detection]="scripts/hardware_detection.sh"
   [vm_optimization]="scripts/vm_optimization.sh"
+  
+  # System configuration
   [enable_services]="scripts/enable_services.sh"
-  [create_fastfetch_config]="scripts/create_fastfetch_config.sh"
   [configure_firewalld]="scripts/configure_firewalld.sh"
   [bootloader_config]="scripts/bootloader_config.sh"
+  [create_fastfetch_config]="scripts/create_fastfetch_config.sh"
+  
+  # Cleanup and security
   [clear_unused_packages_cache]="scripts/clear_unused_packages_cache.sh"
   [install_fail2ban]="scripts/install_fail2ban.sh"
 )
@@ -55,21 +64,30 @@ run_step() {
   fi
 }
 
-# Run all steps in order
+# Run all steps in logical order
+print_info "=== System Setup ==="
 run_step set_hostname
 run_step system_update_and_repos
+
+print_info "=== Terminal Customization ==="
 run_step terminal_customization
 install_programs_from_yaml || print_error "install_programs_from_yaml failed"
 run_step install_nerd_fonts
+
+print_info "=== Package Installation ==="
 run_step enable_codecs
 run_step btrfs_tweaks
 run_step gaming_tweaks
 run_step hardware_detection
 run_step vm_optimization
+
+print_info "=== System Configuration ==="
 run_step enable_services
-run_step create_fastfetch_config
 run_step configure_firewalld
 run_step bootloader_config
+run_step create_fastfetch_config
+
+print_info "=== Cleanup and Security ==="
 run_step clear_unused_packages_cache
 run_step install_fail2ban
 

@@ -5,13 +5,20 @@ source "$(dirname "$0")/../common.sh"
 step "Gaming and performance tweaks"
 
 # Check if user wants gaming tweaks (default to No)
-print_info "Would you like to install gaming and performance tweaks? (y/N): "
-read -r response
+echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+echo -e "${CYAN}🎮 GAMING & PERFORMANCE TWEAKS${RESET}"
+echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+echo -e "${CYAN}Would you like to install gaming and performance tweaks?${RESET}"
+echo -e "${YELLOW}This includes: MangoHud, GameMode, Steam, Lutris, Wine, and more.${RESET}"
+echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+read -r -p "Enter Y to install gaming tweaks, or press Enter to skip: " response
 response="${response:-N}"  # Default to N if empty
 if [[ ! "$response" =~ ^[Yy]$ ]]; then
     print_info "Gaming tweaks skipped."
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
     exit 0
 fi
+echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
 
 # Install MangoHud for performance monitoring
 print_info "Installing MangoHud for performance monitoring..."

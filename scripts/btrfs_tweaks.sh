@@ -37,8 +37,13 @@ if findmnt -n -o FSTYPE / | grep -q btrfs; then
     
     # Offer to create initial Timeshift configuration
     if command -v timeshift >/dev/null && [ ! -f /etc/timeshift/timeshift.json ]; then
-        print_info "Would you like to create initial Timeshift configuration? (y/N): "
-        read -r response
+        echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+        echo -e "${CYAN}📸 TIMESHIFT CONFIGURATION${RESET}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+        echo -e "${CYAN}Would you like to create initial Timeshift configuration?${RESET}"
+        echo -e "${YELLOW}This will create your first system snapshot for backup purposes.${RESET}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+        read -r -p "Enter Y to create snapshot, or press Enter to skip: " response
         response="${response:-N}"  # Default to N if empty
         if [[ "$response" =~ ^[Yy]$ ]]; then
             print_info "Creating initial Timeshift configuration..."
@@ -50,6 +55,7 @@ if findmnt -n -o FSTYPE / | grep -q btrfs; then
         else
             print_info "Timeshift configuration skipped. You can configure it manually later."
         fi
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
     fi
     
     print_success "Btrfs tools installation completed."

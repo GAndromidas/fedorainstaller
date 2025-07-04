@@ -117,6 +117,8 @@ dnf:
       description: "Network downloader"
     - name: "unzip"
       description: "Extractor for .zip archives"
+    - name: "figlet"
+      description: "Display large characters made up of ordinary screen characters"
     - name: "zsh"
       description: "Z shell, a powerful shell for interactive use"
     - name: "flatpak"
