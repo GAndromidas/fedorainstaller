@@ -101,8 +101,8 @@ if [ ${#dnf_packages[@]} -gt 0 ]; then
     dnf_packages=($(printf "%s\n" "${dnf_packages[@]}" | sort -u))
     
     # Track installation results
-    local failed_packages=()
-    local successful_packages=()
+    failed_packages=()
+    successful_packages=()
     
     # Try to install all packages first
     if sudo $DNF_CMD install -y "${dnf_packages[@]}" 2>/dev/null; then
