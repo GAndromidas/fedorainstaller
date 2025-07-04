@@ -58,8 +58,8 @@ system_update_and_repos() {
     sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
     print_success "Flathub repository added successfully."
 
-    # --- System Update (DNF and Flatpaks) ---
-    step "Update system and Flatpaks"
+    # --- System Update (DNF only) ---
+    step "Update system packages"
     print_info "Updating system packages..."
     if command -v dnf5 &> /dev/null; then
         sudo dnf5 upgrade --refresh -y
@@ -71,9 +71,6 @@ system_update_and_repos() {
     else
         print_error "System update failed."
     fi
-    print_info "Updating Flatpak apps..."
-    sudo flatpak update -y
-    print_success "Flatpak apps updated successfully."
 }
 
 system_update_and_repos
