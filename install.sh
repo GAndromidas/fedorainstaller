@@ -36,6 +36,7 @@ declare -A STEP_FUNCS=(
   
   # Terminal and shell customization
   [terminal_customization]="scripts/terminal_customization.sh"
+  [install_programs]="scripts/programs.sh"
   [install_nerd_fonts]="scripts/install_nerd_fonts.sh"
   
   # Package installation
@@ -71,7 +72,7 @@ run_step system_update_and_repos
 
 print_info "=== Terminal Customization ==="
 run_step terminal_customization
-install_programs_from_yaml || print_error "install_programs_from_yaml failed"
+run_step install_programs
 run_step install_nerd_fonts
 
 print_info "=== Package Installation ==="
