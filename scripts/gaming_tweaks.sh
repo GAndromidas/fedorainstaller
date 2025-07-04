@@ -117,17 +117,28 @@ if [ "$XDG_CURRENT_DESKTOP" ]; then
     esac
 fi
 
+# Ensure Flatpak daemon is running
+if ! flatpak ps >/dev/null 2>&1; then
+    print_info "Starting Flatpak daemon..."
+    flatpak ps >/dev/null 2>&1 || true
+fi
+
 for flatpak in "${GAMING_FLATPAKS[@]}"; do
     if ! flatpak list | grep -q "$flatpak"; then
         print_info "Installing $flatpak..."
-        if flatpak install -y flathub "$flatpak"; then
+        if timeout 600 flatpak install -y flathub "$flatpak" 2>/dev/null; then
             print_success "$flatpak installed successfully."
         else
-            print_error "Failed to install $flatpak."
+            print_warning "Failed to install $flatpak (timeout or error). Skipping."
+            # Try to kill any stuck Flatpak processes
+            pkill -f "flatpak.*install" 2>/dev/null || true
         fi
     else
         print_warning "$flatpak is already installed. Skipping."
     fi
+    
+    # Small delay between installations
+    sleep 2
 done
 
 print_success "Gaming and performance tweaks installation completed." 

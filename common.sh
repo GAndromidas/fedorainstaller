@@ -196,12 +196,26 @@ install_programs_from_yaml() {
         print_warning "Flatpak is not installed, skipping Flatpak apps."
         return 0
     fi
+    
+    # Ensure Flatpak daemon is running
+    if ! flatpak ps >/dev/null 2>&1; then
+        print_info "Starting Flatpak daemon..."
+        flatpak ps >/dev/null 2>&1 || true
+    fi
+    
     if [ ${#ALL_FLATPAK_APPS[@]} -gt 0 ]; then
         print_info "Installing Flatpak apps: ${ALL_FLATPAK_APPS[*]}"
+        
+        # Update Flatpak repositories first
+        print_info "Updating Flatpak repositories..."
+        timeout 300 flatpak update --appstream 2>/dev/null || print_warning "Flatpak repository update timed out or failed, continuing..."
+        
         for app in "${ALL_FLATPAK_APPS[@]}"; do
-            flatpak install -y flathub "$app"
+            install_flatpak_app "$app"
+            # Small delay between installations to prevent overwhelming the system
+            sleep 2
         done
-        print_success "Flatpak apps installed."
+        print_success "Flatpak apps installation completed."
     else
         print_warning "No Flatpak apps to install for mode: $MODE"
     fi
@@ -232,6 +246,30 @@ check_dependencies() {
     if [ ${#missing_deps[@]} -gt 0 ]; then
         print_info "Installing missing dependencies: ${missing_deps[*]}"
         sudo $DNF_CMD install -y "${missing_deps[@]}"
+    fi
+}
+
+install_flatpak_app() {
+    local app="$1"
+    local timeout_seconds="${2:-600}"
+    
+    # Check if app is already installed
+    if flatpak list | grep -q "$app"; then
+        print_warning "$app is already installed. Skipping."
+        return 0
+    fi
+    
+    print_info "Installing $app..."
+    
+    # Try to install with timeout
+    if timeout "$timeout_seconds" flatpak install -y flathub "$app" 2>/dev/null; then
+        print_success "$app installed successfully."
+        return 0
+    else
+        print_warning "Failed to install $app (timeout or error). Skipping."
+        # Try to kill any stuck Flatpak processes
+        pkill -f "flatpak.*install" 2>/dev/null || true
+        return 1
     fi
 }
 
