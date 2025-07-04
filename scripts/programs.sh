@@ -100,11 +100,37 @@ if [ ${#dnf_packages[@]} -gt 0 ]; then
     # Remove duplicates
     dnf_packages=($(printf "%s\n" "${dnf_packages[@]}" | sort -u))
     
-    if sudo $DNF_CMD install -y "${dnf_packages[@]}"; then
-        print_success "DNF packages installed successfully."
+    # Track installation results
+    local failed_packages=()
+    local successful_packages=()
+    
+    # Try to install all packages first
+    if sudo $DNF_CMD install -y "${dnf_packages[@]}" 2>/dev/null; then
+        print_success "All DNF packages installed successfully."
         INSTALLED_PACKAGES+=("${dnf_packages[@]}")
     else
-        print_error "Failed to install some DNF packages."
+        print_warning "Some packages failed to install. Attempting individual installation..."
+        
+        # Install packages individually to identify which ones fail
+        for package in "${dnf_packages[@]}"; do
+            print_info "Installing $package..."
+            if sudo $DNF_CMD install -y "$package" 2>/dev/null; then
+                print_success "$package installed successfully."
+                successful_packages+=("$package")
+                INSTALLED_PACKAGES+=("$package")
+            else
+                print_warning "Failed to install $package. Package may not be available in repositories."
+                failed_packages+=("$package")
+            fi
+        done
+        
+        # Summary
+        if [ ${#successful_packages[@]} -gt 0 ]; then
+            print_success "Successfully installed ${#successful_packages[@]} packages: ${successful_packages[*]}"
+        fi
+        if [ ${#failed_packages[@]} -gt 0 ]; then
+            print_warning "Failed to install ${#failed_packages[@]} packages: ${failed_packages[*]}"
+        fi
     fi
 else
     print_warning "No DNF packages to install for mode: $INSTALL_MODE"
