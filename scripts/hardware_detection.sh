@@ -271,7 +271,6 @@ esac
 print_info "Installing general hardware utilities..."
 HARDWARE_PACKAGES=(
     "lshw"
-    "dmidecode"
     "cpuid"
 )
 

@@ -43,7 +43,6 @@ declare -A STEP_FUNCS=(
   [btrfs_tweaks]="scripts/btrfs_tweaks.sh"
   [gaming_tweaks]="scripts/gaming_tweaks.sh"
   [hardware_detection]="scripts/hardware_detection.sh"
-  [vm_optimization]="scripts/vm_optimization.sh"
   
   # System configuration
   [enable_services]="scripts/enable_services.sh"
@@ -80,7 +79,6 @@ run_step enable_codecs
 run_step btrfs_tweaks
 run_step gaming_tweaks
 run_step hardware_detection
-run_step vm_optimization
 
 print_info "=== System Configuration ==="
 run_step enable_services
