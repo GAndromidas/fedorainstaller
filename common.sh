@@ -232,6 +232,22 @@ check_dependencies() {
     fi
 }
 
+# Enable sudo password feedback (asterisks when typing password)
+enable_sudo_pwfeedback() {
+    if ! sudo grep -q '^Defaults.*pwfeedback' /etc/sudoers /etc/sudoers.d/* 2>/dev/null; then
+        print_info "Enabling sudo password feedback (asterisks when typing password)..."
+        if echo 'Defaults env_reset,pwfeedback' | sudo EDITOR='tee -a' visudo; then
+            print_success "Sudo password feedback enabled successfully."
+        else
+            print_error "Failed to enable sudo password feedback."
+        fi
+    else
+        print_warning "Sudo password feedback already enabled. Skipping."
+    fi
+}
+
+
+
 install_flatpak_app() {
     local app="$1"
     local timeout_seconds="${2:-600}"

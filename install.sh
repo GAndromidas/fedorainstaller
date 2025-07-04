@@ -26,6 +26,7 @@ show_menu
 
 require_sudo
 check_dependencies
+enable_sudo_pwfeedback
 
 # Step functions - organized by category
 declare -A STEP_FUNCS=(
