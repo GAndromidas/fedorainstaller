@@ -3,6 +3,12 @@ source "$(dirname "$0")/../common.sh"
 
 step "Install programs from YAML configuration"
 
+# Initialize arrays
+declare -a dnf_packages=()
+declare -a flatpak_packages=()
+declare -a de_dnf_packages=()
+declare -a de_flatpak_packages=()
+
 # Check if programs.yaml exists
 PROGRAMS_YAML="$(dirname "$0")/../configs/programs.yaml"
 if [[ ! -f "$PROGRAMS_YAML" ]]; then
@@ -24,56 +30,39 @@ fi
 read_yaml_packages() {
     local yaml_file="$1"
     local yaml_path="$2"
-    local -n packages_array="$3"
-    
-    packages_array=()
+    local array_name="$3"
     
     # Use yq to extract package names
     local yq_output
     yq_output=$(yq -r "$yaml_path[].name" "$yaml_file" 2>/dev/null)
     
     if [[ $? -eq 0 && -n "$yq_output" ]]; then
+        # Clear the array first
+        eval "$array_name=()"
+        
         while IFS= read -r package; do
             [[ -z "$package" ]] && continue
-            packages_array+=("$package")
+            eval "$array_name+=(\"$package\")"
         done <<< "$yq_output"
-    fi
-}
-
-# Function to read simple package lists
-read_yaml_simple_packages() {
-    local yaml_file="$1"
-    local yaml_path="$2"
-    local -n packages_array="$3"
-    
-    packages_array=()
-    
-    # Use yq to extract simple package names
-    local yq_output
-    yq_output=$(yq -r "$yaml_path[]" "$yaml_file" 2>/dev/null)
-    
-    if [[ $? -eq 0 && -n "$yq_output" ]]; then
-        while IFS= read -r package; do
-            [[ -z "$package" ]] && continue
-            packages_array+=("$package")
-        done <<< "$yq_output"
+    else
+        eval "$array_name=()"
     fi
 }
 
 # Read package lists from YAML based on mode
-if [[ "$MODE" == "default" ]]; then
-    read_yaml_packages "$PROGRAMS_YAML" ".dnf.default" dnf_packages
-    read_yaml_packages "$PROGRAMS_YAML" ".flatpak.default" flatpak_packages
-elif [[ "$MODE" == "minimal" ]]; then
-    read_yaml_packages "$PROGRAMS_YAML" ".dnf.minimal" dnf_packages
-    read_yaml_packages "$PROGRAMS_YAML" ".flatpak.minimal" flatpak_packages
-elif [[ "$MODE" == "custom" ]]; then
+if [[ "$INSTALL_MODE" == "default" ]]; then
+    read_yaml_packages "$PROGRAMS_YAML" ".dnf.default" "dnf_packages"
+    read_yaml_packages "$PROGRAMS_YAML" ".flatpak.default" "flatpak_packages"
+elif [[ "$INSTALL_MODE" == "minimal" ]]; then
+    read_yaml_packages "$PROGRAMS_YAML" ".dnf.minimal" "dnf_packages"
+    read_yaml_packages "$PROGRAMS_YAML" ".flatpak.minimal" "flatpak_packages"
+elif [[ "$INSTALL_MODE" == "custom" ]]; then
     # For custom mode, use the existing interactive selection
     interactive_package_selection
     dnf_packages=("${CUSTOM_DNF_SELECTION[@]}")
     flatpak_packages=("${CUSTOM_FLATPAK_SELECTION[@]}")
 else
-    print_error "Invalid mode: $MODE"
+    print_error "Invalid mode: $INSTALL_MODE"
     exit 1
 fi
 
@@ -88,8 +77,8 @@ if [ "$XDG_CURRENT_DESKTOP" ]; then
 fi
 
 if [ -n "$DE" ]; then
-    read_yaml_simple_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.install" de_dnf_packages
-    read_yaml_simple_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.flatpak" de_flatpak_packages
+    read_yaml_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.install" "de_dnf_packages"
+    read_yaml_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.flatpak" "de_flatpak_packages"
     
     # Add DE-specific packages to main arrays
     dnf_packages+=("${de_dnf_packages[@]}")
@@ -114,7 +103,7 @@ if [ ${#dnf_packages[@]} -gt 0 ]; then
         print_error "Failed to install some DNF packages."
     fi
 else
-    print_warning "No DNF packages to install for mode: $MODE"
+    print_warning "No DNF packages to install for mode: $INSTALL_MODE"
 fi
 
 # Install Flatpak packages
@@ -146,7 +135,7 @@ if [ ${#flatpak_packages[@]} -gt 0 ]; then
         print_success "Flatpak packages installed successfully."
     fi
 else
-    print_warning "No Flatpak packages to install for mode: $MODE"
+    print_warning "No Flatpak packages to install for mode: $INSTALL_MODE"
 fi
 
 print_success "Program installation from YAML completed." 
