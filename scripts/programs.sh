@@ -7,7 +7,7 @@ step "Install programs from YAML configuration"
 PROGRAMS_YAML="$(dirname "$0")/../configs/programs.yaml"
 if [[ ! -f "$PROGRAMS_YAML" ]]; then
     print_error "Programs configuration file not found: $PROGRAMS_YAML"
-    return 1
+    exit 1
 fi
 
 # Ensure yq is available
@@ -16,7 +16,7 @@ if ! command -v yq &>/dev/null; then
     sudo $DNF_CMD install -y yq
     if ! command -v yq &>/dev/null; then
         print_error "Failed to install yq. Please install it manually: sudo dnf install yq"
-        return 1
+        exit 1
     fi
 fi
 
@@ -74,7 +74,7 @@ elif [[ "$MODE" == "custom" ]]; then
     flatpak_packages=("${CUSTOM_FLATPAK_SELECTION[@]}")
 else
     print_error "Invalid mode: $MODE"
-    return 1
+    exit 1
 fi
 
 # Read desktop environment specific packages
