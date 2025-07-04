@@ -1,0 +1,237 @@
+#!/bin/bash
+
+# Color variables for output formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
+DNF_CMD=$(command -v dnf5 || command -v dnf)
+LOGFILE="$HOME/fedorainstaller/install.log"
+ERRORS=()
+INSTALLED_PACKAGES=()
+REMOVED_PACKAGES=()
+CURRENT_STEP=1
+TOTAL_STEPS=21 # update as needed
+
+log()    { echo -e "$1" | tee -a "$LOGFILE"; }
+print_info()    { log "\n${CYAN}$1${RESET}\n"; }
+print_success() { log "\n${GREEN}[OK] $1${RESET}\n"; }
+print_warning() { log "\n${YELLOW}[WARN] $1${RESET}\n"; }
+print_error()   { log "\n${RED}[FAIL] $1${RESET}\n"; ERRORS+=("$1"); }
+step()   { echo -e "\n${CYAN}[$CURRENT_STEP/$TOTAL_STEPS] $1${RESET}"; ((CURRENT_STEP++)); }
+
+show_menu() {
+  echo -e "${YELLOW}Welcome to the Fedora Installer script!${RESET}"
+  echo "Please select your installation mode:"
+  echo "  1) Default"
+  echo "  2) Minimal"
+  echo "  3) Custom"
+  echo "  4) Exit"
+
+  while true; do
+    read -r -p "Enter your choice [1-4]: " menu_choice
+    case "$menu_choice" in
+      1) INSTALL_MODE="default"; IS_DEFAULT=1; IS_MINIMAL=0; IS_CUSTOM=0; break ;;
+      2) INSTALL_MODE="minimal"; IS_DEFAULT=0; IS_MINIMAL=1; IS_CUSTOM=0; break ;;
+      3) INSTALL_MODE="custom"; IS_DEFAULT=0; IS_MINIMAL=0; IS_CUSTOM=1; break ;;
+      4) exit 0 ;;
+      *) echo "Invalid choice!";;
+    esac
+  done
+}
+
+interactive_package_selection() {
+    local MODE="custom"
+    local PROGRAMS_YAML="$HOME/fedorainstaller/configs/programs.yaml"
+    local DNF_LIST=()
+    local DNF_CHOICES=()
+    local FLATPAK_LIST=()
+    local FLATPAK_CHOICES=()
+    local DE=""
+    if [ "$XDG_CURRENT_DESKTOP" ]; then
+        case "${XDG_CURRENT_DESKTOP,,}" in
+            *gnome*) DE="gnome" ;;
+            *kde*)   DE="kde" ;;
+            *cosmic*) DE="cosmic" ;;
+        esac
+    fi
+    # Get minimal sets for pre-selection
+    mapfile -t MINIMAL_DNF < <(yq ".minimal.dnf[].name" "$PROGRAMS_YAML" 2>/dev/null)
+    mapfile -t MINIMAL_FLATPAK < <(yq ".minimal.flatpak[].name" "$PROGRAMS_YAML" 2>/dev/null)
+    # DNF packages
+    mapfile -t DNF_LIST < <(yq ".${MODE}.dnf[] | [.name, .description] | @tsv" "$PROGRAMS_YAML" 2>/dev/null)
+    if [ -n "$DE" ]; then
+        mapfile -t DE_DNF_LIST < <(yq ".desktop_environments.${DE}.install[] | [.name, .description] | @tsv" "$PROGRAMS_YAML" 2>/dev/null)
+        DNF_LIST+=("${DE_DNF_LIST[@]}")
+    fi
+    for entry in "${DNF_LIST[@]}"; do
+        local name desc preselect
+        name="$(echo "$entry" | cut -f1)"
+        desc="$(echo "$entry" | cut -f2-)"
+        preselect="off"
+        for min in "${MINIMAL_DNF[@]}"; do
+            if [ "$name" = "$min" ]; then preselect="on"; break; fi
+        done
+        DNF_CHOICES+=("$name" "$desc" "$preselect")
+    done
+    # Flatpak packages
+    mapfile -t FLATPAK_LIST < <(yq ".${MODE}.flatpak[] | [.name, .description] | @tsv" "$PROGRAMS_YAML" 2>/dev/null)
+    if [ -n "$DE" ]; then
+        mapfile -t DE_FLATPAK_LIST < <(yq ".desktop_environments.${DE}.flatpak[] | [.name, .description] | @tsv" "$PROGRAMS_YAML" 2>/dev/null)
+        FLATPAK_LIST+=("${DE_FLATPAK_LIST[@]}")
+    fi
+    for entry in "${FLATPAK_LIST[@]}"; do
+        local name desc preselect
+        name="$(echo "$entry" | cut -f1)"
+        desc="$(echo "$entry" | cut -f2-)"
+        preselect="off"
+        for min in "${MINIMAL_FLATPAK[@]}"; do
+            if [ "$name" = "$min" ]; then preselect="on"; break; fi
+        done
+        FLATPAK_CHOICES+=("$name" "$desc" "$preselect")
+    done
+    # Ensure whiptail is installed
+    if ! command -v whiptail &>/dev/null; then
+        print_info "Installing whiptail for interactive selection..."
+        sudo $DNF_CMD install -y newt
+    fi
+    # DNF selection
+    local DNF_SELECTED
+    DNF_SELECTED=$(whiptail --title "Fedora Installer - DNF Packages" --checklist \
+        "Select DNF packages to install (SPACE=select, ENTER=confirm):" 22 78 12 \
+        "${DNF_CHOICES[@]}" 3>&1 1>&2 2>&3)
+    if [ $? -ne 0 ]; then
+        print_warning "Whiptail cancelled or failed. Installing all custom DNF packages."
+        DNF_SELECTED="${DNF_CHOICES[@]//\"/}"
+    fi
+    # Flatpak selection
+    local FLATPAK_SELECTED
+    if command -v flatpak &>/dev/null && [ ${#FLATPAK_CHOICES[@]} -gt 0 ]; then
+        FLATPAK_SELECTED=$(whiptail --title "Fedora Installer - Flatpak Apps" --checklist \
+            "Select Flatpak apps to install (SPACE=select, ENTER=confirm):" 22 78 12 \
+            "${FLATPAK_CHOICES[@]}" 3>&1 1>&2 2>&3)
+        if [ $? -ne 0 ]; then
+            print_warning "Whiptail cancelled or failed. Installing all custom Flatpak apps."
+            FLATPAK_SELECTED="${FLATPAK_CHOICES[@]//\"/}"
+        fi
+    fi
+    # Clean up selected lists
+    DNF_SELECTED=( $(echo $DNF_SELECTED | tr -d '"') )
+    FLATPAK_SELECTED=( $(echo $FLATPAK_SELECTED | tr -d '"') )
+    # Return as global variables
+    CUSTOM_DNF_SELECTION=("${DNF_SELECTED[@]}")
+    CUSTOM_FLATPAK_SELECTION=("${FLATPAK_SELECTED[@]}")
+}
+
+install_programs_from_yaml() {
+    local MODE="${INSTALL_MODE:-default}"
+    local PROGRAMS_YAML="$HOME/fedorainstaller/configs/programs.yaml"
+    if ! command -v yq &>/dev/null; then
+        print_info "Installing yq for YAML parsing..."
+        sudo $DNF_CMD install -y yq
+    fi
+    if [ ! -f "$PROGRAMS_YAML" ]; then
+        print_error "programs.yaml not found!"
+        return 1
+    fi
+    # Detect DE
+    local DE=""
+    if [ "$XDG_CURRENT_DESKTOP" ]; then
+        case "${XDG_CURRENT_DESKTOP,,}" in
+            *gnome*) DE="gnome" ;;
+            *kde*)   DE="kde" ;;
+            *cosmic*) DE="cosmic" ;;
+        esac
+    fi
+    local ALL_DNF_PACKAGES=()
+    local ALL_FLATPAK_APPS=()
+    if [ "$MODE" = "custom" ]; then
+        interactive_package_selection
+        ALL_DNF_PACKAGES=("${CUSTOM_DNF_SELECTION[@]}")
+        ALL_FLATPAK_APPS=("${CUSTOM_FLATPAK_SELECTION[@]}")
+    else
+        mapfile -t DNF_PACKAGES < <(yq ".${MODE}.dnf[].name" "$PROGRAMS_YAML" 2>/dev/null)
+        if [ -n "$DE" ]; then
+            mapfile -t DE_DNF_PACKAGES < <(yq ".desktop_environments.${DE}.install[].name" "$PROGRAMS_YAML" 2>/dev/null)
+            DNF_PACKAGES+=("${DE_DNF_PACKAGES[@]}")
+        fi
+        ALL_DNF_PACKAGES=("${DNF_PACKAGES[@]}")
+        mapfile -t FLATPAK_APPS < <(yq ".${MODE}.flatpak[].name" "$PROGRAMS_YAML" 2>/dev/null)
+        if [ -n "$DE" ]; then
+            mapfile -t DE_FLATPAK_APPS < <(yq ".desktop_environments.${DE}.flatpak[].name" "$PROGRAMS_YAML" 2>/dev/null)
+            FLATPAK_APPS+=("${DE_FLATPAK_APPS[@]}")
+        fi
+        ALL_FLATPAK_APPS=("${FLATPAK_APPS[@]}")
+    fi
+    # Special handling for eza: check if in dnf, else install from copr
+    local EZA_INSTALLED=0
+    if [[ " ${ALL_DNF_PACKAGES[*]} " =~ " eza " ]]; then
+        if ! $DNF_CMD list --available eza &>/dev/null; then
+            print_info "eza not found in DNF, enabling COPR and installing from COPR..."
+            local EZA_COPR_REPO=$(yq '.copr[] | select(.package=="eza") | .repo' "$PROGRAMS_YAML" 2>/dev/null)
+            if [ -n "$EZA_COPR_REPO" ]; then
+                sudo $DNF_CMD copr enable -y "$EZA_COPR_REPO"
+                sudo $DNF_CMD install -y eza && EZA_INSTALLED=1
+            else
+                print_error "COPR repo for eza not found in YAML."
+            fi
+        fi
+    fi
+    # Remove eza from ALL_DNF_PACKAGES if it was installed from copr to avoid double install
+    if [ $EZA_INSTALLED -eq 1 ]; then
+        ALL_DNF_PACKAGES=("${ALL_DNF_PACKAGES[@]/eza}")
+    fi
+    if [ ${#ALL_DNF_PACKAGES[@]} -gt 0 ]; then
+        print_info "Installing DNF packages: ${ALL_DNF_PACKAGES[*]}"
+        sudo $DNF_CMD install -y "${ALL_DNF_PACKAGES[@]}"
+        INSTALLED_PACKAGES+=("${ALL_DNF_PACKAGES[@]}")
+        print_success "DNF packages installed."
+    else
+        print_warning "No DNF packages to install for mode: $MODE"
+    fi
+    # Flatpak
+    if ! command -v flatpak &>/dev/null; then
+        print_warning "Flatpak is not installed, skipping Flatpak apps."
+        return 0
+    fi
+    if [ ${#ALL_FLATPAK_APPS[@]} -gt 0 ]; then
+        print_info "Installing Flatpak apps: ${ALL_FLATPAK_APPS[*]}"
+        for app in "${ALL_FLATPAK_APPS[@]}"; do
+            flatpak install -y flathub "$app"
+        done
+        print_success "Flatpak apps installed."
+    else
+        print_warning "No Flatpak apps to install for mode: $MODE"
+    fi
+}
+
+prompt_reboot() {
+    local errors_present="$1"
+    if [ "$errors_present" = "0" ]; then
+        if command -v figlet >/dev/null; then
+            figlet "Reboot System"
+        else
+            echo -e "${CYAN}========== Reboot System ==========${RESET}"
+        fi
+        read -p "Installation complete. Press Y to clean up installer files and reboot, or any other key to exit without reboot: " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            delete_fedorainstaller_folder
+            # Uninstall figlet before reboot if installed
+            if command -v figlet >/dev/null; then
+                sudo $DNF_CMD remove -y figlet
+            fi
+            print_info "Rebooting system now..."
+            sudo reboot
+        else
+            print_info "Reboot cancelled. Installer files not deleted."
+        fi
+    else
+        print_warning "Some steps failed. The fedorainstaller folder was NOT deleted for troubleshooting."
+        print_warning "Review the log at $LOGFILE"
+        for err in "${ERRORS[@]}"; do
+            print_error "$err"
+        done
+    fi
+}
