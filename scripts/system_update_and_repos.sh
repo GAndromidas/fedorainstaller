@@ -40,8 +40,6 @@ system_update_and_repos() {
                 sudo $DNF_CMD copr enable -y "$repo"
             done
             print_success "COPR repositories enabled."
-        else
-            print_warning "No COPR repositories found in YAML."
         fi
     else
         print_warning "programs.yaml not found, skipping COPR enable."

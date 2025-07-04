@@ -49,6 +49,9 @@ read_yaml_packages() {
     fi
 }
 
+# Debug: Show the current mode
+print_info "Current installation mode: '$INSTALL_MODE'"
+
 # Read package lists from YAML based on mode
 if [[ "$INSTALL_MODE" == "default" ]]; then
     read_yaml_packages "$PROGRAMS_YAML" ".dnf.default" "dnf_packages"
@@ -62,7 +65,8 @@ elif [[ "$INSTALL_MODE" == "custom" ]]; then
     dnf_packages=("${CUSTOM_DNF_SELECTION[@]}")
     flatpak_packages=("${CUSTOM_FLATPAK_SELECTION[@]}")
 else
-    print_error "Invalid mode: $INSTALL_MODE"
+    print_error "Invalid mode: '$INSTALL_MODE'"
+    print_error "Available modes: default, minimal, custom"
     exit 1
 fi
 

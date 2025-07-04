@@ -27,6 +27,12 @@ fedora_ascii
 
 show_menu
 
+# Export variables for child scripts
+export INSTALL_MODE
+export IS_DEFAULT
+export IS_MINIMAL
+export IS_CUSTOM
+
 require_sudo
 check_dependencies
 enable_sudo_pwfeedback
