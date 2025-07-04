@@ -1,11 +1,6 @@
 # Fedora Installer - Programs Configuration
 # This file contains all package lists for different installation modes and desktop environments
 
-copr:
-  - repo: "alternateved/eza"
-    package: "eza"
-    description: "Modern replacement for 'ls' (from COPR)"
-
 dnf:
   default:
     - name: "android-tools"
@@ -18,6 +13,8 @@ dnf:
       description: "Resource monitor and process viewer"
     - name: "cmatrix"
       description: "Matrix-style terminal screensaver"
+    - name: "eza"
+      description: "Modern replacement for 'ls'"
     - name: "fastfetch"
       description: "Neofetch alternative for system info"
     - name: "filezilla"
@@ -81,6 +78,8 @@ dnf:
       description: "Resource monitor and process viewer"
     - name: "cmatrix"
       description: "Matrix-style terminal screensaver"
+    - name: "eza"
+      description: "Modern replacement for 'ls'"
     - name: "fastfetch"
       description: "Neofetch alternative for system info"
     - name: "filezilla"

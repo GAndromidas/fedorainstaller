@@ -152,13 +152,13 @@ install_programs_from_yaml() {
         ALL_DNF_PACKAGES=("${CUSTOM_DNF_SELECTION[@]}")
         ALL_FLATPAK_APPS=("${CUSTOM_FLATPAK_SELECTION[@]}")
     else
-        mapfile -t DNF_PACKAGES < <(yq ".${MODE}.dnf[].name" "$PROGRAMS_YAML" 2>/dev/null)
+        mapfile -t DNF_PACKAGES < <(yq ".dnf.${MODE}[].name" "$PROGRAMS_YAML" 2>/dev/null)
         if [ -n "$DE" ]; then
             mapfile -t DE_DNF_PACKAGES < <(yq ".desktop_environments.${DE}.install[].name" "$PROGRAMS_YAML" 2>/dev/null)
             DNF_PACKAGES+=("${DE_DNF_PACKAGES[@]}")
         fi
         ALL_DNF_PACKAGES=("${DNF_PACKAGES[@]}")
-        mapfile -t FLATPAK_APPS < <(yq ".${MODE}.flatpak[].name" "$PROGRAMS_YAML" 2>/dev/null)
+        mapfile -t FLATPAK_APPS < <(yq ".flatpak.${MODE}[].name" "$PROGRAMS_YAML" 2>/dev/null)
         if [ -n "$DE" ]; then
             mapfile -t DE_FLATPAK_APPS < <(yq ".desktop_environments.${DE}.flatpak[].name" "$PROGRAMS_YAML" 2>/dev/null)
             FLATPAK_APPS+=("${DE_FLATPAK_APPS[@]}")
