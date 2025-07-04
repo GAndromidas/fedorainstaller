@@ -68,6 +68,8 @@ dnf:
       description: "Tweak advanced GNOME settings"
     - name: "gnome-extensions-app"
       description: "Manage GNOME Shell Extensions"
+    - name: "vlc"
+      description: "VLC media player (with codecs, from RPM Fusion)"
   minimal:
     - name: "android-tools"
       description: "Android development and debugging tools"
@@ -122,15 +124,9 @@ dnf:
 
 flatpak:
   default:
-    - name: "org.videolan.VLC"
-      description: "VLC media player"
     - name: "it.mijorus.gearlever"
       description: "System tray application launcher (Gearlever)"
-    - name: "com.stremio.Stremio"
-      description: "Stremio media streaming platform"
   minimal:
-    - name: "org.videolan.VLC"
-      description: "VLC media player"
     - name: "it.mijorus.gearlever"
       description: "System tray application launcher (Gearlever)"
 

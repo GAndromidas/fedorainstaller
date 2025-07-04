@@ -33,6 +33,7 @@ declare -A STEP_FUNCS=(
   [system_update_and_repos]="scripts/system_update_and_repos.sh"
   [terminal_customization]="scripts/terminal_customization.sh"
   [install_nerd_fonts]="scripts/install_nerd_fonts.sh"
+  [enable_codecs]="scripts/enable_codecs.sh"
   [btrfs_tweaks]="scripts/btrfs_tweaks.sh"
   [gaming_tweaks]="scripts/gaming_tweaks.sh"
   [hardware_detection]="scripts/hardware_detection.sh"
@@ -60,6 +61,7 @@ run_step system_update_and_repos
 run_step terminal_customization
 install_programs_from_yaml || print_error "install_programs_from_yaml failed"
 run_step install_nerd_fonts
+run_step enable_codecs
 run_step btrfs_tweaks
 run_step gaming_tweaks
 run_step hardware_detection
