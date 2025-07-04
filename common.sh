@@ -165,24 +165,7 @@ install_programs_from_yaml() {
         fi
         ALL_FLATPAK_APPS=("${FLATPAK_APPS[@]}")
     fi
-    # Special handling for eza: check if in dnf, else install from copr
-    local EZA_INSTALLED=0
-    if [[ " ${ALL_DNF_PACKAGES[*]} " =~ " eza " ]]; then
-        if ! $DNF_CMD list --available eza &>/dev/null; then
-            print_info "eza not found in DNF, enabling COPR and installing from COPR..."
-            local EZA_COPR_REPO=$(yq '.copr[] | select(.package=="eza") | .repo' "$PROGRAMS_YAML" 2>/dev/null)
-            if [ -n "$EZA_COPR_REPO" ]; then
-                sudo $DNF_CMD copr enable -y "$EZA_COPR_REPO"
-                sudo $DNF_CMD install -y eza && EZA_INSTALLED=1
-            else
-                print_error "COPR repo for eza not found in YAML."
-            fi
-        fi
-    fi
-    # Remove eza from ALL_DNF_PACKAGES if it was installed from copr to avoid double install
-    if [ $EZA_INSTALLED -eq 1 ]; then
-        ALL_DNF_PACKAGES=("${ALL_DNF_PACKAGES[@]/eza}")
-    fi
+
     if [ ${#ALL_DNF_PACKAGES[@]} -gt 0 ]; then
         print_info "Installing DNF packages: ${ALL_DNF_PACKAGES[*]}"
         sudo $DNF_CMD install -y "${ALL_DNF_PACKAGES[@]}"
