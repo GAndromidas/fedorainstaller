@@ -102,6 +102,20 @@ GAMING_FLATPAKS=(
     "com.heroicgameslauncher.hgl"
 )
 
+# Add ProtonUp tools based on desktop environment
+if [ "$XDG_CURRENT_DESKTOP" ]; then
+    case "${XDG_CURRENT_DESKTOP,,}" in
+        *gnome*|*cosmic*)
+            print_info "Detected GNOME/Cosmic desktop, adding ProtonPlus..."
+            GAMING_FLATPAKS+=("com.vysp3r.ProtonPlus")
+            ;;
+        *kde*)
+            print_info "Detected KDE Plasma desktop, adding ProtonUp-Qt..."
+            GAMING_FLATPAKS+=("net.davidotek.pupgui2")
+            ;;
+    esac
+fi
+
 for flatpak in "${GAMING_FLATPAKS[@]}"; do
     if ! flatpak list | grep -q "$flatpak"; then
         print_info "Installing $flatpak..."
