@@ -39,18 +39,7 @@ if ! command -v gamemoded >/dev/null; then
     if sudo $DNF_CMD install -y gamemode; then
         print_success "GameMode installed successfully."
         INSTALLED_PACKAGES+=(gamemode)
-        
-        # Enable GameMode service (correct service name)
-        if systemctl is-enabled gamemoded >/dev/null 2>&1; then
-            print_info "GameMode service is already enabled."
-        else
-            print_info "Enabling GameMode service..."
-            if sudo systemctl enable gamemoded; then
-                print_success "GameMode service enabled."
-            else
-                print_error "Failed to enable GameMode service."
-            fi
-        fi
+        print_info "GameMode installed. You can manually enable the service later if needed."
     else
         print_error "Failed to install GameMode."
     fi
