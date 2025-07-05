@@ -144,7 +144,7 @@ check_dependencies() {
     for cmd in curl git; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing_deps+=("$cmd")
-        fi
+    fi
     done
     
     if [ ${#missing_deps[@]} -gt 0 ]; then
