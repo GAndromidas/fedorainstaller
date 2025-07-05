@@ -178,7 +178,18 @@ log_performance() {
     local elapsed=$((current_time - START_TIME))
     local minutes=$((elapsed / 60))
     local seconds=$((elapsed % 60))
-    echo -e "${CYAN}$step_name completed in ${minutes}m ${seconds}s (${elapsed}s)${RESET}"
+    
+    # Special formatting for total installation time
+    if [[ "$step_name" == "Total installation time" ]]; then
+        echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+        echo -e "${CYAN}⏱️  INSTALLATION TIME SUMMARY${RESET}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
+        echo -e "${GREEN}🎯 Total Installation Time: ${YELLOW}${minutes}m ${seconds}s${RESET}"
+        echo -e "${CYAN}📊 Total Seconds: ${YELLOW}${elapsed}s${RESET}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
+    else
+        echo -e "${CYAN}$step_name completed in ${minutes}m ${seconds}s (${elapsed}s)${RESET}"
+    fi
 }
 
 print_summary() {
