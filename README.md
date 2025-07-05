@@ -2,6 +2,8 @@
 
 ---
 
+![Screenshot_20250705_212646](https://github.com/user-attachments/assets/97d9fa08-1d63-403d-bed5-1b5429ad7783)
+
 ## Overview
 
 **Fedorainstaller** automates your Fedora post-install setup. It configures your system, installs essential and optional packages, and customizes your environment—all with minimal user input.
