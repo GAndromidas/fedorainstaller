@@ -109,8 +109,6 @@ desktop_environments:
     flatpak:
       - name: "com.mattjakeman.ExtensionManager"
         description: "GNOME Extension Manager"
-      - name: "it.mijorus.gearlever"
-        description: "System tray application launcher (Gearlever)"
     remove:
       - name: "epiphany"
         description: "GNOME Web browser"
@@ -183,8 +181,6 @@ desktop_environments:
     flatpak:
       - name: "dev.edfloreshz.CosmicTweaks"
         description: "System settings and tweaks"
-      - name: "it.mijorus.gearlever"
-        description: "System tray application launcher (Gearlever)"
     remove: []
 
 # COPR repositories to enable
