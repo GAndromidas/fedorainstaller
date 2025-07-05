@@ -41,11 +41,11 @@ if ! command -v gamemoded >/dev/null; then
         INSTALLED_PACKAGES+=(gamemode)
         
         # Enable GameMode service (correct service name)
-        if systemctl is-enabled gamemode >/dev/null 2>&1; then
+        if systemctl is-enabled gamemoded >/dev/null 2>&1; then
             print_info "GameMode service is already enabled."
         else
             print_info "Enabling GameMode service..."
-            if sudo systemctl enable gamemode; then
+            if sudo systemctl enable gamemoded; then
                 print_success "GameMode service enabled."
             else
                 print_error "Failed to enable GameMode service."
