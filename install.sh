@@ -50,7 +50,6 @@ declare -A STEP_FUNCS=(
   
   # Package installation
   [enable_codecs]="scripts/enable_codecs.sh"
-  [btrfs_tweaks]="scripts/btrfs_tweaks.sh"
   [gaming_tweaks]="scripts/gaming_tweaks.sh"
   [hardware_detection]="scripts/hardware_detection.sh"
   
@@ -86,7 +85,6 @@ run_step install_nerd_fonts
 
 print_info "=== Package Installation ==="
 run_step enable_codecs
-run_step btrfs_tweaks
 run_step gaming_tweaks
 run_step hardware_detection
 
