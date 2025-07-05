@@ -63,6 +63,10 @@ declare -A STEP_FUNCS=(
   [install_fail2ban]="scripts/install_fail2ban.sh"
 )
 
+# Calculate total steps dynamically
+TOTAL_STEPS=${#STEP_FUNCS[@]}
+export TOTAL_STEPS
+
 run_step() {
   local step_name="$1"
   local script_path="$(dirname "$0")/${STEP_FUNCS[$step_name]}"

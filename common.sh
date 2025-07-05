@@ -13,7 +13,7 @@ ERRORS=()
 INSTALLED_PACKAGES=()
 REMOVED_PACKAGES=()
 CURRENT_STEP=1
-TOTAL_STEPS=21 # update as needed
+# TOTAL_STEPS is now calculated dynamically in install.sh
 
 log()    { echo -e "$1" | tee -a "$LOGFILE"; }
 print_info()    { log "\n${CYAN}$1${RESET}\n"; }
@@ -130,19 +130,31 @@ prompt_reboot() {
         fi
         
         echo -e "${CYAN}Installation completed successfully!${RESET}"
-        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
-        read -p "Press Y to clean up installer files and reboot, or any other key to exit without reboot: " confirm
-        if [[ "$confirm" =~ ^[Yy]$ ]]; then
-            delete_fedorainstaller_folder
-            # Uninstall figlet before reboot if installed
-            if command -v figlet >/dev/null; then
-                sudo $DNF_CMD remove -y figlet
-            fi
-            print_info "Rebooting system now..."
-            sudo reboot
-        else
-            print_info "Reboot cancelled. Installer files not deleted."
-        fi
+        echo -e "${YELLOW}It's strongly recommended to reboot your system now.\n${RESET}"
+        
+        while true; do
+            read -r -p "$(echo -e "${YELLOW}Reboot now? [Y/n]: ${RESET}")" reboot_ans
+            reboot_ans=${reboot_ans,,}
+            case "$reboot_ans" in
+                ""|y|yes)
+                    echo -e "\n${CYAN}Rebooting...${RESET}\n"
+                    delete_fedorainstaller_folder
+                    # Silently uninstall figlet before reboot
+                    if command -v figlet >/dev/null; then
+                        sudo $DNF_CMD remove -y figlet >/dev/null 2>&1
+                    fi
+                    sudo reboot
+                    break
+                    ;;
+                n|no)
+                    echo -e "\n${YELLOW}Reboot skipped. You can reboot manually at any time using \`sudo reboot\`.${RESET}\n"
+                    break
+                    ;;
+                *)
+                    echo -e "\n${RED}Please answer Y (yes) or N (no).${RESET}\n"
+                    ;;
+            esac
+        done
         echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
     else
         echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
