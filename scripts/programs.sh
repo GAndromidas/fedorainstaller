@@ -59,14 +59,9 @@ if [[ "$INSTALL_MODE" == "default" ]]; then
 elif [[ "$INSTALL_MODE" == "minimal" ]]; then
     read_yaml_packages "$PROGRAMS_YAML" ".dnf.minimal" "dnf_packages"
     read_yaml_packages "$PROGRAMS_YAML" ".flatpak.minimal" "flatpak_packages"
-elif [[ "$INSTALL_MODE" == "custom" ]]; then
-    # For custom mode, use the existing interactive selection
-    interactive_package_selection
-    dnf_packages=("${CUSTOM_DNF_SELECTION[@]}")
-    flatpak_packages=("${CUSTOM_FLATPAK_SELECTION[@]}")
 else
     print_error "Invalid mode: '$INSTALL_MODE'"
-    print_error "Available modes: default, minimal, custom"
+    print_error "Available modes: default, minimal"
     exit 1
 fi
 
@@ -134,14 +129,9 @@ if [[ "$INSTALL_MODE" == "default" ]]; then
 elif [[ "$INSTALL_MODE" == "minimal" ]]; then
     read_yaml_packages "$PROGRAMS_YAML" ".dnf.minimal" "dnf_packages"
     read_yaml_packages "$PROGRAMS_YAML" ".flatpak.minimal" "flatpak_packages"
-elif [[ "$INSTALL_MODE" == "custom" ]]; then
-    # For custom mode, use the existing interactive selection
-    interactive_package_selection
-    dnf_packages=("${CUSTOM_DNF_SELECTION[@]}")
-    flatpak_packages=("${CUSTOM_FLATPAK_SELECTION[@]}")
 else
     print_error "Invalid mode: '$INSTALL_MODE'"
-    print_error "Available modes: default, minimal, custom"
+    print_error "Available modes: default, minimal"
     exit 1
 fi
 

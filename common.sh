@@ -27,102 +27,17 @@ show_menu() {
   echo "Please select your installation mode:"
   echo "  1) Default"
   echo "  2) Minimal"
-  echo "  3) Custom"
-  echo "  4) Exit"
+  echo "  3) Exit"
 
   while true; do
-    read -r -p "Enter your choice [1-4]: " menu_choice
+    read -r -p "Enter your choice [1-3]: " menu_choice
     case "$menu_choice" in
-      1) INSTALL_MODE="default"; IS_DEFAULT=1; IS_MINIMAL=0; IS_CUSTOM=0; break ;;
-      2) INSTALL_MODE="minimal"; IS_DEFAULT=0; IS_MINIMAL=1; IS_CUSTOM=0; break ;;
-      3) INSTALL_MODE="custom"; IS_DEFAULT=0; IS_MINIMAL=0; IS_CUSTOM=1; break ;;
-      4) exit 0 ;;
+      1) INSTALL_MODE="default"; IS_DEFAULT=1; IS_MINIMAL=0; break ;;
+      2) INSTALL_MODE="minimal"; IS_DEFAULT=0; IS_MINIMAL=1; break ;;
+      3) exit 0 ;;
       *) echo "Invalid choice!";;
     esac
   done
-}
-
-interactive_package_selection() {
-    local MODE="custom"
-    local PROGRAMS_YAML="$HOME/fedorainstaller/configs/programs.yaml"
-    local DNF_LIST=()
-    local DNF_CHOICES=()
-    local FLATPAK_LIST=()
-    local FLATPAK_CHOICES=()
-    local DE=""
-    if [ "$XDG_CURRENT_DESKTOP" ]; then
-        case "${XDG_CURRENT_DESKTOP,,}" in
-            *gnome*) DE="gnome" ;;
-            *kde*)   DE="kde" ;;
-            *cosmic*) DE="cosmic" ;;
-        esac
-    fi
-    # Get minimal sets for pre-selection
-    mapfile -t MINIMAL_DNF < <(yq ".minimal.dnf[].name" "$PROGRAMS_YAML" 2>/dev/null)
-    mapfile -t MINIMAL_FLATPAK < <(yq ".minimal.flatpak[].name" "$PROGRAMS_YAML" 2>/dev/null)
-    # DNF packages
-    mapfile -t DNF_LIST < <(yq ".${MODE}.dnf[] | [.name, .description] | @tsv" "$PROGRAMS_YAML" 2>/dev/null)
-    if [ -n "$DE" ]; then
-        mapfile -t DE_DNF_LIST < <(yq ".desktop_environments.${DE}.install[] | [.name, .description] | @tsv" "$PROGRAMS_YAML" 2>/dev/null)
-        DNF_LIST+=("${DE_DNF_LIST[@]}")
-    fi
-    for entry in "${DNF_LIST[@]}"; do
-        local name desc preselect
-        name="$(echo "$entry" | cut -f1)"
-        desc="$(echo "$entry" | cut -f2-)"
-        preselect="off"
-        for min in "${MINIMAL_DNF[@]}"; do
-            if [ "$name" = "$min" ]; then preselect="on"; break; fi
-        done
-        DNF_CHOICES+=("$name" "$desc" "$preselect")
-    done
-    # Flatpak packages
-    mapfile -t FLATPAK_LIST < <(yq ".${MODE}.flatpak[] | [.name, .description] | @tsv" "$PROGRAMS_YAML" 2>/dev/null)
-    if [ -n "$DE" ]; then
-        mapfile -t DE_FLATPAK_LIST < <(yq ".desktop_environments.${DE}.flatpak[] | [.name, .description] | @tsv" "$PROGRAMS_YAML" 2>/dev/null)
-        FLATPAK_LIST+=("${DE_FLATPAK_LIST[@]}")
-    fi
-    for entry in "${FLATPAK_LIST[@]}"; do
-        local name desc preselect
-        name="$(echo "$entry" | cut -f1)"
-        desc="$(echo "$entry" | cut -f2-)"
-        preselect="off"
-        for min in "${MINIMAL_FLATPAK[@]}"; do
-            if [ "$name" = "$min" ]; then preselect="on"; break; fi
-        done
-        FLATPAK_CHOICES+=("$name" "$desc" "$preselect")
-    done
-    # Ensure whiptail is installed
-    if ! command -v whiptail &>/dev/null; then
-        print_info "Installing whiptail for interactive selection..."
-        sudo $DNF_CMD install -y newt
-    fi
-    # DNF selection
-    local DNF_SELECTED
-    DNF_SELECTED=$(whiptail --title "Fedora Installer - DNF Packages" --checklist \
-        "Select DNF packages to install (SPACE=select, ENTER=confirm):" 22 78 12 \
-        "${DNF_CHOICES[@]}" 3>&1 1>&2 2>&3)
-    if [ $? -ne 0 ]; then
-        print_warning "Whiptail cancelled or failed. Installing all custom DNF packages."
-        DNF_SELECTED="${DNF_CHOICES[@]//\"/}"
-    fi
-    # Flatpak selection
-    local FLATPAK_SELECTED
-    if command -v flatpak &>/dev/null && [ ${#FLATPAK_CHOICES[@]} -gt 0 ]; then
-        FLATPAK_SELECTED=$(whiptail --title "Fedora Installer - Flatpak Apps" --checklist \
-            "Select Flatpak apps to install (SPACE=select, ENTER=confirm):" 22 78 12 \
-            "${FLATPAK_CHOICES[@]}" 3>&1 1>&2 2>&3)
-        if [ $? -ne 0 ]; then
-            print_warning "Whiptail cancelled or failed. Installing all custom Flatpak apps."
-            FLATPAK_SELECTED="${FLATPAK_CHOICES[@]//\"/}"
-        fi
-    fi
-    # Clean up selected lists
-    DNF_SELECTED=( $(echo $DNF_SELECTED | tr -d '"') )
-    FLATPAK_SELECTED=( $(echo $FLATPAK_SELECTED | tr -d '"') )
-    # Return as global variables
-    CUSTOM_DNF_SELECTION=("${DNF_SELECTED[@]}")
-    CUSTOM_FLATPAK_SELECTION=("${FLATPAK_SELECTED[@]}")
 }
 
 require_sudo() {
