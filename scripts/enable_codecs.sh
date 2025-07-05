@@ -27,8 +27,15 @@ fi
 print_info "Installing GStreamer plugins and codecs..."
 sudo $DNF_CMD install -y gstreamer1-plugins-good gstreamer1-plugins-base gstreamer1-plugin-openh264 gstreamer1-plugin-libav
 
-# Install ffmpeg and lame
+# Install ffmpeg and lame (handle FFmpeg conflict)
 print_info "Installing ffmpeg and lame..."
+# Remove ffmpeg-free if installed to avoid conflicts
+if rpm -q ffmpeg-free >/dev/null 2>&1; then
+    print_info "Removing ffmpeg-free to avoid conflicts..."
+    sudo $DNF_CMD remove -y ffmpeg-free
+fi
+
+# Install full ffmpeg from RPM Fusion
 sudo $DNF_CMD install -y ffmpeg lame-libs
 
 print_success "All major multimedia codecs are enabled and installed." 

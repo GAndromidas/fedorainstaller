@@ -23,9 +23,9 @@ echo -e "${YELLOW}════════════════════�
 # Install MangoHud for performance monitoring
 print_info "Installing MangoHud for performance monitoring..."
 if ! rpm -q mangohud >/dev/null 2>&1; then
-    if sudo $DNF_CMD install -y mangohud mangohud-32bit; then
+    if sudo $DNF_CMD install -y mangohud; then
         print_success "MangoHud installed successfully."
-        INSTALLED_PACKAGES+=(mangohud mangohud-32bit)
+        INSTALLED_PACKAGES+=(mangohud)
     else
         print_error "Failed to install MangoHud."
     fi
@@ -40,12 +40,12 @@ if ! command -v gamemoded >/dev/null; then
         print_success "GameMode installed successfully."
         INSTALLED_PACKAGES+=(gamemode)
         
-        # Enable GameMode service
-        if systemctl is-enabled gamemoded >/dev/null 2>&1; then
+        # Enable GameMode service (correct service name)
+        if systemctl is-enabled gamemode >/dev/null 2>&1; then
             print_info "GameMode service is already enabled."
         else
             print_info "Enabling GameMode service..."
-            if sudo systemctl enable gamemoded; then
+            if sudo systemctl enable gamemode; then
                 print_success "GameMode service enabled."
             else
                 print_error "Failed to enable GameMode service."
@@ -58,17 +58,13 @@ else
     print_warning "GameMode is already installed. Skipping."
 fi
 
-# Install additional gaming utilities
+# Install additional gaming utilities (removed non-existent packages)
 print_info "Installing additional gaming utilities..."
 GAMING_PACKAGES=(
     "steam"
     "lutris"
     "wine"
     "winetricks"
-    "dxvk"
-    "vkd3d"
-    "lib32-dxvk"
-    "lib32-vkd3d"
 )
 
 for package in "${GAMING_PACKAGES[@]}"; do

@@ -4,8 +4,8 @@ source "$(dirname "$0")/../common.sh"
 step "Install fail2ban"
 print_info "Installing fail2ban..."
 if sudo $DNF_CMD install -y fail2ban; then
-sudo systemctl enable --now fail2ban
-print_success "fail2ban installed and enabled."
+    sudo systemctl enable --now fail2ban.service
+    print_success "fail2ban installed and enabled."
 else
     print_error "Failed to install fail2ban. Package may not be available."
     exit 1

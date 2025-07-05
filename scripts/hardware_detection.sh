@@ -261,18 +261,4 @@ for package in "${HARDWARE_PACKAGES[@]}"; do
     fi
 done
 
-# Configure lm_sensors if installed
-if command -v sensors >/dev/null; then
-    print_info "Configuring lm_sensors..."
-    if [ ! -f /etc/sensors3.conf ]; then
-        if sudo sensors-detect --auto; then
-            print_success "lm_sensors configured successfully."
-        else
-            print_error "Failed to configure lm_sensors."
-        fi
-    else
-        print_warning "lm_sensors is already configured. Skipping."
-    fi
-fi
-
 print_success "Hardware detection and driver installation completed." 
