@@ -64,7 +64,6 @@ GAMING_PACKAGES=(
     "steam"
     "lutris"
     "wine"
-    "winetricks"
 )
 
 for package in "${GAMING_PACKAGES[@]}"; do
