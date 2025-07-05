@@ -72,18 +72,16 @@ dnf:
       description: "Extractor for .zip archives"
     - name: "figlet"
       description: "Display large characters made up of ordinary screen characters"
+    - name: "vlc"
+      description: "VLC media player (with codecs, from RPM Fusion)"
 
 flatpak:
   default:
-    - name: "it.mijorus.gearlever"
-      description: "System tray application launcher (Gearlever)"
     - name: "com.stremio.Stremio"
       description: "Stremio - Discover, organize, and stream video content from all sources in one place (Flathub)"
     - name: "com.rustdesk.RustDesk"
       description: "RustDesk - Open source remote desktop software (Flathub)"
   minimal:
-    - name: "it.mijorus.gearlever"
-      description: "System tray application launcher (Gearlever)"
     - name: "com.rustdesk.RustDesk"
       description: "RustDesk - Open source remote desktop software (Flathub)"
 
@@ -101,6 +99,8 @@ desktop_environments:
       - name: "transmission-gtk"
         description: "BitTorrent client"
     flatpak:
+      - name: "it.mijorus.gearlever"
+        description: "System tray application launcher (Gearlever)"
       - name: "com.mattjakeman.ExtensionManager"
         description: "GNOME Extension Manager"
     remove:
@@ -195,6 +195,8 @@ desktop_environments:
       - name: "cosmic-files"
         description: "COSMIC file manager"
     flatpak:
+      - name: "it.mijorus.gearlever"
+        description: "System tray application launcher (Gearlever)"
       - name: "dev.edfloreshz.CosmicTweaks"
         description: "System settings and tweaks"
     remove: []
