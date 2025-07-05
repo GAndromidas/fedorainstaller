@@ -83,9 +83,15 @@ flatpak:
   default:
     - name: "it.mijorus.gearlever"
       description: "System tray application launcher (Gearlever)"
+    - name: "com.stremio.Stremio"
+      description: "Stremio - Discover, organize, and stream video content from all sources in one place (Flathub)"
+    - name: "com.rustdesk.RustDesk"
+      description: "RustDesk - Open source remote desktop software (Flathub)"
   minimal:
     - name: "it.mijorus.gearlever"
       description: "System tray application launcher (Gearlever)"
+    - name: "com.rustdesk.RustDesk"
+      description: "RustDesk - Open source remote desktop software (Flathub)"
 
 desktop_environments:
   gnome:

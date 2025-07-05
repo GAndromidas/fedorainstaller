@@ -80,6 +80,81 @@ if [ "$XDG_CURRENT_DESKTOP" ]; then
     esac
 fi
 
+# --- DE-specific removals ---
+if [ -n "$DE" ]; then
+    # Read DNF packages to remove
+    read_yaml_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.remove" "de_remove_dnf_packages"
+    if [ ${#de_remove_dnf_packages[@]} -gt 0 ]; then
+        print_info "Attempting to remove ${#de_remove_dnf_packages[@]} DNF packages for $DE: ${de_remove_dnf_packages[*]}"
+        for pkg in "${de_remove_dnf_packages[@]}"; do
+            if rpm -q "$pkg" >/dev/null 2>&1; then
+                if sudo $DNF_CMD remove -y "$pkg"; then
+                    print_success "$pkg removed successfully."
+                    REMOVED_PACKAGES+=("$pkg")
+                else
+                    print_warning "Failed to remove $pkg."
+                fi
+            fi
+        done
+    else
+        print_info "No DNF packages to remove for $DE."
+    fi
+    # Read Flatpak packages to remove (if ever added in future)
+    de_remove_flatpak_packages=()
+    if command -v flatpak &>/dev/null; then
+        yq_output=$(yq -r ".desktop_environments.$DE.remove_flatpak[].name" "$PROGRAMS_YAML" 2>/dev/null)
+        if [[ $? -eq 0 && -n "$yq_output" ]]; then
+            while IFS= read -r package; do
+                [[ -z "$package" ]] && continue
+                de_remove_flatpak_packages+=("$package")
+            done <<< "$yq_output"
+        fi
+        if [ ${#de_remove_flatpak_packages[@]} -gt 0 ]; then
+            print_info "Attempting to remove ${#de_remove_flatpak_packages[@]} Flatpak apps for $DE: ${de_remove_flatpak_packages[*]}"
+            for app in "${de_remove_flatpak_packages[@]}"; do
+                if flatpak list | grep -q "$app"; then
+                    if flatpak uninstall -y "$app"; then
+                        print_success "$app Flatpak removed successfully."
+                        REMOVED_PACKAGES+=("$app (Flatpak)")
+                    else
+                        print_warning "Failed to remove Flatpak $app."
+                    fi
+                else
+                    print_info "$app Flatpak is not installed. Skipping."
+                fi
+            done
+        fi
+    fi
+fi
+
+# Read package lists from YAML based on mode
+if [[ "$INSTALL_MODE" == "default" ]]; then
+    read_yaml_packages "$PROGRAMS_YAML" ".dnf.default" "dnf_packages"
+    read_yaml_packages "$PROGRAMS_YAML" ".flatpak.default" "flatpak_packages"
+elif [[ "$INSTALL_MODE" == "minimal" ]]; then
+    read_yaml_packages "$PROGRAMS_YAML" ".dnf.minimal" "dnf_packages"
+    read_yaml_packages "$PROGRAMS_YAML" ".flatpak.minimal" "flatpak_packages"
+elif [[ "$INSTALL_MODE" == "custom" ]]; then
+    # For custom mode, use the existing interactive selection
+    interactive_package_selection
+    dnf_packages=("${CUSTOM_DNF_SELECTION[@]}")
+    flatpak_packages=("${CUSTOM_FLATPAK_SELECTION[@]}")
+else
+    print_error "Invalid mode: '$INSTALL_MODE'"
+    print_error "Available modes: default, minimal, custom"
+    exit 1
+fi
+
+# Read desktop environment specific packages
+DE=""
+if [ "$XDG_CURRENT_DESKTOP" ]; then
+    case "${XDG_CURRENT_DESKTOP,,}" in
+        *gnome*) DE="gnome" ;;
+        *kde*)   DE="kde" ;;
+        *cosmic*) DE="cosmic" ;;
+    esac
+fi
+
 if [ -n "$DE" ]; then
     read_yaml_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.install" "de_dnf_packages"
     read_yaml_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.flatpak" "de_flatpak_packages"
