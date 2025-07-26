@@ -69,22 +69,21 @@ for package in "${GAMING_PACKAGES[@]}"; do
     fi
 done
 
-# Create MangoHud configuration directory and basic config
+# Copy MangoHud configuration
 if command -v mangohud >/dev/null; then
-    print_info "Creating MangoHud configuration..."
-    mkdir -p "$HOME/.config/MangoHud"
-    
-    if [ ! -f "$HOME/.config/MangoHud/MangoHud.conf" ]; then
-        cat > "$HOME/.config/MangoHud/MangoHud.conf" << 'EOF'
-# MangoHud Configuration
-toggle_hud=Shift_R+F12
-toggle_logging=Shift_L+F2
-output_folder=/tmp/mangohud
-log_interval=100
-EOF
-        print_success "MangoHud configuration created."
+    print_info "Configuring MangoHud..."
+    MANGOHUD_CONFIG_DIR="$HOME/.config/MangoHud"
+    MANGOHUD_CONFIG_SOURCE="$(dirname "$0")/../configs/MangoHud.conf"
+
+    # Create MangoHud config directory if it doesn't exist
+    mkdir -p "$MANGOHUD_CONFIG_DIR"
+
+    # Copy MangoHud configuration file, replacing if it exists
+    if [ -f "$MANGOHUD_CONFIG_SOURCE" ]; then
+        cp "$MANGOHUD_CONFIG_SOURCE" "$MANGOHUD_CONFIG_DIR/MangoHud.conf"
+        print_success "MangoHud configuration copied successfully."
     else
-        print_warning "MangoHud configuration already exists. Skipping."
+        print_warning "MangoHud configuration file not found at $MANGOHUD_CONFIG_SOURCE"
     fi
 fi
 
@@ -127,9 +126,9 @@ for flatpak in "${GAMING_FLATPAKS[@]}"; do
     else
         print_warning "$flatpak is already installed. Skipping."
     fi
-    
+
     # Small delay between installations
     sleep 2
 done
 
-print_success "Gaming and performance tweaks installation completed." 
+print_success "Gaming and performance tweaks installation completed."
