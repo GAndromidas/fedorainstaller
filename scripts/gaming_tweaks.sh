@@ -70,21 +70,37 @@ for package in "${GAMING_PACKAGES[@]}"; do
 done
 
 # Copy MangoHud configuration
-if command -v mangohud >/dev/null; then
+if rpm -q mangohud >/dev/null 2>&1 || command -v mangohud >/dev/null; then
     print_info "Configuring MangoHud..."
     MANGOHUD_CONFIG_DIR="$HOME/.config/MangoHud"
     MANGOHUD_CONFIG_SOURCE="$(dirname "$0")/../configs/MangoHud.conf"
 
     # Create MangoHud config directory if it doesn't exist
-    mkdir -p "$MANGOHUD_CONFIG_DIR"
-
-    # Copy MangoHud configuration file, replacing if it exists
-    if [ -f "$MANGOHUD_CONFIG_SOURCE" ]; then
-        cp "$MANGOHUD_CONFIG_SOURCE" "$MANGOHUD_CONFIG_DIR/MangoHud.conf"
-        print_success "MangoHud configuration copied successfully."
+    if ! mkdir -p "$MANGOHUD_CONFIG_DIR" 2>/dev/null; then
+        print_error "Failed to create MangoHud config directory: $MANGOHUD_CONFIG_DIR"
     else
-        print_warning "MangoHud configuration file not found at $MANGOHUD_CONFIG_SOURCE"
+        # Copy MangoHud configuration file, replacing if it exists
+        if [ -f "$MANGOHUD_CONFIG_SOURCE" ]; then
+            if cp "$MANGOHUD_CONFIG_SOURCE" "$MANGOHUD_CONFIG_DIR/MangoHud.conf" 2>/dev/null; then
+                # Set proper permissions
+                chmod 644 "$MANGOHUD_CONFIG_DIR/MangoHud.conf" 2>/dev/null || true
+
+                # Verify the config was copied correctly
+                if [ -f "$MANGOHUD_CONFIG_DIR/MangoHud.conf" ] && [ -s "$MANGOHUD_CONFIG_DIR/MangoHud.conf" ]; then
+                    print_success "MangoHud configuration copied and verified at: $MANGOHUD_CONFIG_DIR/MangoHud.conf"
+                else
+                    print_error "MangoHud configuration file is empty or corrupted after copy"
+                fi
+            else
+                print_error "Failed to copy MangoHud configuration file"
+            fi
+        else
+            print_warning "MangoHud configuration file not found at: $MANGOHUD_CONFIG_SOURCE"
+            print_info "Expected path: $(realpath "$(dirname "$0")/../configs/MangoHud.conf" 2>/dev/null || echo "N/A")"
+        fi
     fi
+else
+    print_warning "MangoHud not installed, skipping configuration."
 fi
 
 # Install additional gaming-related Flatpaks
