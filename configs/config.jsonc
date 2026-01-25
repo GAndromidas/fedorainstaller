@@ -1,0 +1,111 @@
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "type": "file"
+    },
+    "display": {
+        "separator": "  ",
+        "color": {
+            "keys": "light_blue"
+        }
+    },
+    "modules": [
+        {
+            "type": "title",
+            "key": " ",
+            "color": {
+                "user": "light_blue",
+                "at": "white",
+                "host": "magenta"
+            }
+        },
+        "break",
+        {
+            "type": "command",
+            "key": " ",
+            "shell": "/bin/bash"
+        },
+        {
+            "type": "os",
+            "key": " "
+        },
+        {
+            "type": "kernel",
+            "key": " ",
+            "format": "{1} {2}"
+        },
+        {
+            "type": "de",
+            "key": " 󰠱"
+        },
+        {
+            "type": "wm",
+            "key": " 󱂬"
+        },
+        {
+            "type": "shell",
+            "key": " "
+        },
+        {
+            "type": "terminal",
+            "key": " "
+        },
+        {
+            "type": "packages",
+            "key": " "
+        },
+        "break",
+        {
+            "type": "bios",
+            "key": " "
+        },
+        {
+            "type": "cpu",
+            "key": " ",
+            "temp": true,
+            "precision": 1
+        },
+        {
+            "type": "gpu",
+            "key": " ",
+            "temp": true,
+            "precision": 1
+        },
+        {
+            "type": "memory",
+            "key": " "
+        },
+        {
+            "type": "swap",
+            "key": " 󰍛"
+        },
+        {
+            "type": "disk",
+            "key": " "
+        },
+        {
+            "type": "display",
+            "key": " "
+        },
+        {
+            "type": "battery",
+            "key": " "
+        },
+        "break",
+        {
+            "type": "uptime",
+            "key": " "
+        },
+        {
+            "type": "command",
+            "key": " ",
+            "text": "birth_install=$(stat -c %W /); current=$(date +%s); time_progression=$((current - birth_install)); days_difference=$((time_progression / 86400)); echo $days_difference days"
+        },
+        "break",
+        {
+            "type": "colors",
+            "paddingLeft": 2,
+            "symbol": "circle"
+        }
+    ]
+}
