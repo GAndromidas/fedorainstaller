@@ -6,12 +6,6 @@
 
 ---
 
-## Demo
-
-![Screenshot_20250705_212646](https://github.com/user-attachments/assets/97d9fa08-1d63-403d-bed5-1b5429ad7783)
-
----
-
 ## 🚀 Overview
 
 **Fedorainstaller** is a comprehensive, automated post-installation script for Fedora that transforms your fresh installation into a fully configured, optimized system. It handles everything from system preparation to desktop environment customization, gaming optimizations, security hardening, and robust dual-boot support.
@@ -160,7 +154,7 @@ Lightweight setup with essential utilities:
 
 ```bash
 # Clone the repository
-git clone https://github.com/gandromidas/fedorainstaller && cd fedorainstaller
+git clone https://github.com/GAndromidas/fedorainstaller && cd fedorainstaller
 
 # Make executable and run
 chmod +x install.sh
