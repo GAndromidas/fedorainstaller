@@ -19,6 +19,8 @@ dnf:
       description: "Neofetch alternative for system info"
     - name: "filezilla"
       description: "FTP client for file transfers"
+    - name: firefox
+      description: "Web browser"
     - name: "fzf"
       description: "Command-line fuzzy finder"
     - name: "hwinfo"
@@ -35,10 +37,6 @@ dnf:
       description: "Smarter cd command"
     - name: "unzip"
       description: "Extractor for .zip archives"
-    - name: "figlet"
-      description: "Display large characters made up of ordinary screen characters"
-    - name: "vlc"
-      description: "VLC media player (with codecs, from RPM Fusion)"
   minimal:
     - name: "android-tools"
       description: "Android development and debugging tools"
@@ -52,6 +50,8 @@ dnf:
       description: "Modern replacement for 'ls'"
     - name: "fastfetch"
       description: "Neofetch alternative for system info"
+    - name: firefox
+      description: "Web browser"
     - name: "fzf"
       description: "Command-line fuzzy finder"
     - name: "gnome-disk-utility"
@@ -70,10 +70,6 @@ dnf:
       description: "Smarter cd command"
     - name: "unzip"
       description: "Extractor for .zip archives"
-    - name: "figlet"
-      description: "Display large characters made up of ordinary screen characters"
-    - name: "vlc"
-      description: "VLC media player (with codecs, from RPM Fusion)"
 
 flatpak:
   default:
@@ -128,8 +124,8 @@ desktop_environments:
         description: "SVG-based theme engine for Qt5"
       - name: "qbittorrent"
         description: "BitTorrent client"
-      - name: "vlc"
-        description: "VLC media player"
+      - name: "smplayer"
+        description: "KDE video player"
     flatpak:
       - name: "it.mijorus.gearlever"
         description: "System tray application launcher (Gearlever)"
