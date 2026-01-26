@@ -51,8 +51,7 @@ fi
 print_info "Installing additional gaming utilities..."
 GAMING_PACKAGES=(
     "steam"
-    "lutris"
-    "wine"
+    "goverlay"
 )
 
 for package in "${GAMING_PACKAGES[@]}"; do
@@ -107,21 +106,10 @@ fi
 print_info "Installing gaming-related Flatpaks..."
 GAMING_FLATPAKS=(
     "com.heroicgameslauncher.hgl"
+    "io.github.Faugus.faugus-launcher"
+    "com.discordapp.Discord"
+    "com.vysp3r.ProtonPlus"
 )
-
-# Add ProtonUp tools based on desktop environment
-if [ "$XDG_CURRENT_DESKTOP" ]; then
-    case "${XDG_CURRENT_DESKTOP,,}" in
-        *gnome*|*cosmic*)
-            print_info "Detected GNOME/Cosmic desktop, adding ProtonPlus..."
-            GAMING_FLATPAKS+=("com.vysp3r.ProtonPlus")
-            ;;
-        *kde*)
-            print_info "Detected KDE Plasma desktop, adding ProtonUp-Qt..."
-            GAMING_FLATPAKS+=("net.davidotek.pupgui2")
-            ;;
-    esac
-fi
 
 # Ensure Flatpak daemon is running
 if ! flatpak ps >/dev/null 2>&1; then
