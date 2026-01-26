@@ -1,7 +1,6 @@
 # Fedorainstaller: Fedora Post-Installation Script
 
 [![Latest Release](https://img.shields.io/github/v/release/GAndromidas/fedorainstaller.svg?style=for-the-badge)](https://github.com/GAndromidas/fedorainstaller/releases)
-[![Total Downloads](https://img.shields.io/github/downloads/GAndromidas/fedorainstaller/total.svg?style=for-the-badge)](https://github.com/GAndromidas/fedorainstaller/releases)
 [![Last Commit](https://img.shields.io/github/last-commit/GAndromidas/fedorainstaller.svg?style=for-the-badge)](https://github.com/GAndromidas/fedorainstaller/commits/main)
 
 ---
