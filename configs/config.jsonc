@@ -4,9 +4,12 @@
         "type": "file"
     },
     "display": {
-        "separator": "  ",
+        "separator": " - ",
         "color": {
             "keys": "light_blue"
+        },
+        "percent": {
+            "type": 2
         }
     },
     "modules": [
@@ -52,7 +55,8 @@
         },
         {
             "type": "packages",
-            "key": " "
+            "key": " ",
+            "format": "{1} (dnf), {flatpak-all} (flatpak)"
         },
         "break",
         {
@@ -62,14 +66,12 @@
         {
             "type": "cpu",
             "key": " ",
-            "temp": true,
-            "precision": 1
+            "temp": true
         },
         {
             "type": "gpu",
             "key": " ",
-            "temp": true,
-            "precision": 1
+            "temp": true
         },
         {
             "type": "memory",
