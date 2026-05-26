@@ -800,7 +800,7 @@ is_headless() {
 # SECTION 7: PACKAGE INSTALLATION FUNCTIONS
 # ============================================================================
 
-# Package installation helpers
+# Single package installation for DNF
 dnf_install_single() {
     local package="$1"
     local quiet="${2:-true}"
@@ -819,8 +819,139 @@ dnf_install_single() {
     return $?
 }
 
-# Install packages in batch with fallback to individual
+# Single package installation for Flatpak
+flatpak_install_single() {
+    local app="$1"
+    local quiet="${2:-true}"
+    local timeout_seconds="${3:-600}"
+    
+    # Check if app is already installed
+    if flatpak list | grep -q "$app" 2>/dev/null; then
+        log_to_file "$app is already installed (Flatpak)"
+        return 0
+    fi
+    
+    if [ "$quiet" = true ]; then
+        timeout "$timeout_seconds" flatpak install -y flathub "$app" >/dev/null 2>&1
+    else
+        timeout "$timeout_seconds" flatpak install -y flathub "$app"
+    fi
+    
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        # Try to kill any stuck Flatpak processes
+        pkill -f "flatpak.*install" 2>/dev/null || true
+    fi
+    
+    return $exit_code
+}
+
+# Unified package installation function (similar to archinstaller's install_package_generic)
+# Parameters: $1 - Package manager type (dnf|flatpak), $@ - Packages to install
+# Returns: 0 on success, 1 if some packages failed
+install_package_generic() {
+    local pkg_manager="$1"
+    shift
+    local pkgs=("$@")
+    local total=${#pkgs[@]}
+    local current=0
+    local failed=0
+    
+    if [ $total -eq 0 ]; then
+        ui_info "No packages to install"
+        return 0
+    fi
+    
+    local manager_name
+    case "$pkg_manager" in
+        dnf) manager_name="DNF" ;;
+        flatpak) manager_name="Flatpak" ;;
+        *) manager_name="Unknown" ;;
+    esac
+    
+    if supports_gum; then
+        gum style --foreground 51 "Installing ${total} packages via ${manager_name}..."
+    else
+        echo -e "${CYAN}Installing ${total} packages via ${manager_name}...${RESET}"
+    fi
+    
+    for pkg in "${pkgs[@]}"; do
+        ((current++))
+        
+        # Check if already installed
+        local already_installed=false
+        case "$pkg_manager" in
+            dnf)
+                rpm -q "$pkg" &>/dev/null && already_installed=true
+                ;;
+            flatpak)
+                flatpak list | grep -q "$pkg" &>/dev/null && already_installed=true
+                ;;
+        esac
+        
+        if [ "$already_installed" = true ]; then
+            continue
+        fi
+        
+        # Dry-run mode: simulate installation
+        if [ "${DRY_RUN:-false}" = true ]; then
+            ui_info "Dry-run: Would install $pkg"
+            INSTALLED_PACKAGES+=("$pkg")
+        else
+            # Capture both stdout and stderr for better error diagnostics
+            local error_output
+            case "$pkg_manager" in
+                dnf)
+                    if error_output=$(sudo $DNF_CMD install -y "$pkg" 2>&1); then
+                        INSTALLED_PACKAGES+=("$pkg")
+                    else
+                        ui_error "Failed to install $pkg"
+                        FAILED_PACKAGES+=("$pkg")
+                        log_error "Failed to install $pkg via $manager_name" "Check network connection and package availability"
+                        # Log the actual error for debugging
+                        echo "$error_output" >> "$INSTALL_LOG"
+                        # Show last line of error if verbose or if it's a critical error
+                        if [ "${VERBOSE:-false}" = true ] || [[ "$error_output" == *"error:"* ]]; then
+                            local last_error=$(echo "$error_output" | grep -i "error" | tail -1)
+                            [ -n "$last_error" ] && log_warning "  Error: $last_error" "Try running the failed command manually for more details"
+                        fi
+                        ((failed++))
+                    fi
+                    ;;
+                flatpak)
+                    if error_output=$(flatpak install -y flathub "$pkg" 2>&1); then
+                        INSTALLED_PACKAGES+=("$pkg")
+                    else
+                        ui_error "Failed to install $pkg"
+                        FAILED_PACKAGES+=("$pkg")
+                        log_error "Failed to install $pkg via $manager_name" "Check network connection and package availability"
+                        # Log the actual error for debugging
+                        echo "$error_output" >> "$INSTALL_LOG"
+                        # Show last line of error if verbose or if it's a critical error
+                        if [ "${VERBOSE:-false}" = true ] || [[ "$error_output" == *"error:"* ]]; then
+                            local last_error=$(echo "$error_output" | grep -i "error" | tail -1)
+                            [ -n "$last_error" ] && log_warning "  Error: $last_error" "Try running the failed command manually for more details"
+                        fi
+                        ((failed++))
+                    fi
+                    ;;
+            esac
+        fi
+    done
+    
+    if [ $failed -eq 0 ]; then
+        ui_success "Package installation completed"
+        return 0
+    else
+        ui_warn "Package installation completed with $failed failures" "Failed packages: ${FAILED_PACKAGES[*]}"
+        return 1
+    fi
+}
+
+# Batch install with fallback to individual (optimized for speed)
 install_packages_batch() {
+    local pkg_manager="$1"
+    shift
     local packages=("$@")
     local total=${#packages[@]}
     
@@ -829,77 +960,79 @@ install_packages_batch() {
         return 0
     fi
     
-    ui_info "Installing ${total} packages..."
+    ui_info "Installing ${total} packages via $pkg_manager (batch mode)..."
     
-    # Try batch install first for speed
-    if sudo $DNF_CMD install -y "${packages[@]}" >/dev/null 2>&1; then
-        ui_success "All packages installed successfully in batch"
-        INSTALLED_PACKAGES+=("${packages[@]}")
+    # Filter out already installed packages
+    local packages_to_install=()
+    for pkg in "${packages[@]}"; do
+        local already_installed=false
+        case "$pkg_manager" in
+            dnf)
+                rpm -q "$pkg" &>/dev/null && already_installed=true
+                ;;
+            flatpak)
+                flatpak list | grep -q "$pkg" &>/dev/null && already_installed=true
+                ;;
+        esac
+        
+        if [ "$already_installed" = false ]; then
+            packages_to_install+=("$pkg")
+        fi
+    done
+    
+    local filtered_total=${#packages_to_install[@]}
+    if [ $filtered_total -eq 0 ]; then
+        ui_info "All packages already installed"
         return 0
     fi
     
-    # Fallback to individual installation
-    ui_warn "Batch installation failed, falling back to individual installation..."
-    local failed_packages=()
-    
-    for pkg in "${packages[@]}"; do
-        if dnf_install_single "$pkg" true; then
-            INSTALLED_PACKAGES+=("$pkg")
-        else
-            failed_packages+=("$pkg")
-            log_warning "Failed to install $pkg"
-        fi
-    done
-    
-    if [ ${#failed_packages[@]} -gt 0 ]; then
-        ui_warn "Failed to install ${#failed_packages[@]} packages: ${failed_packages[*]}"
-        return 1
+    # Try batch install first for speed
+    if [ "${DRY_RUN:-false}" = true ]; then
+        ui_info "Dry-run: Would install ${filtered_total} packages"
+        INSTALLED_PACKAGES+=("${packages_to_install[@]}")
+        return 0
     fi
     
-    return 0
-}
-
-# Install packages quietly (one by one, suppressing output)
-install_packages_quietly() {
-    local packages=("$@")
-    
-    for package in "${packages[@]}"; do
-        if ! rpm -q "$package" >/dev/null 2>&1; then
-            log_to_file "Installing $package..."
-            sudo $DNF_CMD install -y "$package" >/dev/null 2>&1
-            if [ $? -eq 0 ]; then
-                log_to_file "$package installed successfully"
-                INSTALLED_PACKAGES+=("$package")
-            else
-                log_to_file "Failed to install $package"
+    case "$pkg_manager" in
+        dnf)
+            if sudo $DNF_CMD install -y "${packages_to_install[@]}" >/dev/null 2>&1; then
+                ui_success "All packages installed successfully in batch"
+                INSTALLED_PACKAGES+=("${packages_to_install[@]}")
+                return 0
             fi
-        fi
-    done
+            ;;
+        flatpak)
+            if flatpak install -y flathub "${packages_to_install[@]}" >/dev/null 2>&1; then
+                ui_success "All packages installed successfully in batch"
+                INSTALLED_PACKAGES+=("${packages_to_install[@]}")
+                return 0
+            fi
+            ;;
+    esac
+    
+    # Fallback to individual installation using the generic function
+    ui_warn "Batch installation failed, falling back to individual installation..."
+    install_package_generic "$pkg_manager" "${packages_to_install[@]}"
+    return $?
 }
 
-# Flatpak installation with timeout
+# Legacy wrapper for backward compatibility
+install_packages_quietly() {
+    install_package_generic "dnf" "$@"
+}
+
+# Legacy wrapper for backward compatibility
 install_flatpak_app() {
     local app="$1"
     local timeout_seconds="${2:-600}"
     
-    # Check if app is already installed
-    if flatpak list | grep -q "$app"; then
-        print_warning "$app is already installed. Skipping."
+    if [ "${DRY_RUN:-false}" = true ]; then
+        ui_info "Dry-run: Would install Flatpak app $app"
+        INSTALLED_PACKAGES+=("$app (Flatpak)")
         return 0
     fi
     
-    print_info "Installing $app..."
-    
-    # Try to install with timeout
-    if timeout "$timeout_seconds" flatpak install -y flathub "$app" 2>/dev/null; then
-        print_success "$app installed successfully."
-        return 0
-    else
-        print_warning "Failed to install $app (timeout or error). Skipping."
-        # Try to kill any stuck Flatpak processes
-        pkill -f "flatpak.*install" 2>/dev/null || true
-        return 1
-    fi
+    flatpak_install_single "$app" true "$timeout_seconds"
 }
 
 # ============================================================================

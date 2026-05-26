@@ -20,53 +20,20 @@ if [[ ! "$response" =~ ^[Yy]$ ]]; then
 fi
 echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
 
-# Install MangoHud for performance monitoring
-print_info "Installing MangoHud for performance monitoring..."
-if ! rpm -q mangohud >/dev/null 2>&1; then
-    if sudo $DNF_CMD install -y mangohud; then
-        print_success "MangoHud installed successfully."
-        INSTALLED_PACKAGES+=(mangohud)
-    else
-        print_error "Failed to install MangoHud."
-    fi
-else
-    print_warning "MangoHud is already installed. Skipping."
-fi
-
-# Install GameMode if not already installed
-if ! command -v gamemoded >/dev/null; then
-    print_info "Installing GameMode for performance optimization..."
-    if sudo $DNF_CMD install -y gamemode; then
-        print_success "GameMode installed successfully."
-        INSTALLED_PACKAGES+=(gamemode)
-        print_info "GameMode installed. You can manually enable the service later if needed."
-    else
-        print_error "Failed to install GameMode."
-    fi
-else
-    print_warning "GameMode is already installed. Skipping."
-fi
-
-# Install additional gaming utilities (removed non-existent packages)
-print_info "Installing additional gaming utilities..."
+# Install gaming packages using unified batch installation
+print_info "Installing gaming packages..."
 GAMING_PACKAGES=(
+    "mangohud"
+    "gamemode"
     "steam"
     "goverlay"
 )
 
-for package in "${GAMING_PACKAGES[@]}"; do
-    if ! rpm -q "$package" >/dev/null 2>&1; then
-        print_info "Installing $package..."
-        if sudo $DNF_CMD install -y "$package"; then
-            print_success "$package installed successfully."
-            INSTALLED_PACKAGES+=("$package")
-        else
-            print_error "Failed to install $package."
-        fi
-    else
-        print_warning "$package is already installed. Skipping."
-    fi
-done
+install_packages_batch "dnf" "${GAMING_PACKAGES[@]}"
+
+if command -v gamemoded >/dev/null; then
+    print_info "GameMode installed. You can manually enable the service later if needed."
+fi
 
 # Copy MangoHud configuration
 if rpm -q mangohud >/dev/null 2>&1 || command -v mangohud >/dev/null; then
@@ -102,7 +69,7 @@ else
     print_warning "MangoHud not installed, skipping configuration."
 fi
 
-# Install additional gaming-related Flatpaks
+# Install additional gaming-related Flatpaks using unified batch installation
 print_info "Installing gaming-related Flatpaks..."
 GAMING_FLATPAKS=(
     "com.heroicgameslauncher.hgl"
@@ -117,22 +84,7 @@ if ! flatpak ps >/dev/null 2>&1; then
     flatpak ps >/dev/null 2>&1 || true
 fi
 
-for flatpak in "${GAMING_FLATPAKS[@]}"; do
-    if ! flatpak list | grep -q "$flatpak"; then
-        print_info "Installing $flatpak..."
-        if timeout 600 flatpak install -y flathub "$flatpak" 2>/dev/null; then
-            print_success "$flatpak installed successfully."
-        else
-            print_warning "Failed to install $flatpak (timeout or error). Skipping."
-            # Try to kill any stuck Flatpak processes
-            pkill -f "flatpak.*install" 2>/dev/null || true
-        fi
-    else
-        print_warning "$flatpak is already installed. Skipping."
-    fi
-
-    # Small delay between installations
-    sleep 2
-done
+# Use unified batch installation for Flatpaks
+install_packages_batch "flatpak" "${GAMING_FLATPAKS[@]}"
 
 print_success "Gaming and performance tweaks installation completed."

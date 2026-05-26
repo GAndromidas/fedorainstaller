@@ -116,19 +116,9 @@ configure_windows_dual_boot() {
     
     # For GRUB systems, configure os-prober
     if [ "$BOOTLOADER" = "grub" ]; then
-        # Ensure ntfs-3g is installed
-        if ! rpm -q ntfs-3g &>/dev/null; then
-            ui_info "Installing ntfs-3g for NTFS support..."
-            sudo $DNF_CMD install -y ntfs-3g >/dev/null 2>&1
-            INSTALLED_PACKAGES+=(ntfs-3g)
-        fi
-        
-        # Ensure os-prober is installed
-        if ! rpm -q os-prober &>/dev/null; then
-            ui_info "Installing os-prober..."
-            sudo $DNF_CMD install -y os-prober >/dev/null 2>&1
-            INSTALLED_PACKAGES+=(os-prober)
-        fi
+        # Ensure ntfs-3g and os-prober are installed using unified batch installation
+        ui_info "Installing ntfs-3g and os-prober for Windows boot support..."
+        install_packages_batch "dnf" "ntfs-3g" "os-prober"
         
         # Enable os-prober in GRUB config
         local grub_conf="/etc/default/grub"

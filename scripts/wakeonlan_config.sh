@@ -237,12 +237,11 @@ configure_wakeonlan() {
         return 0
     fi
     
-    # Install ethtool if not present
+    # Install ethtool if not present using unified batch installation
     if ! command -v ethtool &>/dev/null; then
         ui_info "Installing ethtool for Wake-on-LAN support..."
-        if sudo $DNF_CMD install -y ethtool; then
+        if install_packages_batch "dnf" "ethtool"; then
             ui_success "ethtool installed successfully"
-            INSTALLED_PACKAGES+=(ethtool)
             log_to_file "ethtool installed for WoL support"
         else
             ui_error "Failed to install ethtool"

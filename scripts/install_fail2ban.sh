@@ -3,7 +3,7 @@ source "$(dirname "$0")/../common.sh"
 # Install and configure fail2ban
 step "Install fail2ban"
 print_info "Installing fail2ban..."
-if sudo $DNF_CMD install -y fail2ban; then
+if install_packages_batch "dnf" "fail2ban"; then
     sudo systemctl enable --now fail2ban.service
     print_success "fail2ban installed and enabled."
 else

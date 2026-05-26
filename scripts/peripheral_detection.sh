@@ -33,20 +33,18 @@ detect_logitech_devices() {
         ui_success "Logitech devices detected:"
         echo "$logitech_devices"
         
-        # Install Solaar for Logitech device management
-        if ! rpm -q solaar &>/dev/null; then
-            ui_info "Installing Solaar for Logitech device management..."
-            if sudo $DNF_CMD install -y solaar >/dev/null 2>&1; then
-                ui_success "Solaar installed successfully"
-                INSTALLED_PACKAGES+=(solaar)
-                
-                # Enable Solaar service
-                if systemctl list-unit-files | grep -q "^solaar.service"; then
-                    sudo systemctl enable --now solaar >/dev/null 2>&1
-                    ui_success "Solaar service enabled"
-                fi
-            else
-                ui_warn "Failed to install Solaar"
+        # Install Solaar for Logitech device management using unified batch installation
+        ui_info "Installing Solaar for Logitech device management..."
+        if install_packages_batch "dnf" "solaar"; then
+            ui_success "Solaar installed successfully"
+            
+            # Enable Solaar service
+            if systemctl list-unit-files | grep -q "^solaar.service"; then
+                sudo systemctl enable --now solaar >/dev/null 2>&1
+                ui_success "Solaar service enabled"
+            fi
+        else
+            ui_warn "Failed to install Solaar"
             fi
         else
             ui_info "Solaar already installed"

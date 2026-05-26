@@ -9,8 +9,7 @@ customize_terminal() {
     # --- ZSH & Oh-My-Zsh ---
     if ! command -v zsh >/dev/null; then
         print_info "Installing ZSH..."
-        sudo $DNF_CMD install -y zsh && print_success "ZSH installed." || print_error "Failed to install ZSH."
-        INSTALLED_PACKAGES+=(zsh)
+        install_packages_batch "dnf" "zsh"
     else
         print_warning "zsh is already installed. Skipping."
     fi

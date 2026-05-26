@@ -13,8 +13,7 @@ configure_firewall() {
     # Fedora uses firewalld by default
     if ! rpm -q firewalld &>/dev/null; then
         ui_info "Installing firewalld..."
-        sudo $DNF_CMD install -y firewalld >/dev/null 2>&1
-        INSTALLED_PACKAGES+=(firewalld)
+        install_packages_batch "dnf" "firewalld"
     fi
     
     # Enable and start firewalld
@@ -65,8 +64,7 @@ enable_power_management() {
     # Install power-profiles-daemon if not present
     if ! rpm -q power-profiles-daemon &>/dev/null; then
         ui_info "Installing power-profiles-daemon..."
-        sudo $DNF_CMD install -y power-profiles-daemon >/dev/null 2>&1
-        INSTALLED_PACKAGES+=(power-profiles-daemon)
+        install_packages_batch "dnf" "power-profiles-daemon"
     fi
     
     # Enable power-profiles-daemon
@@ -81,8 +79,7 @@ enable_power_management() {
     if is_laptop; then
         if ! rpm -q tlp &>/dev/null; then
             ui_info "Installing TLP for laptop battery optimization..."
-            sudo $DNF_CMD install -y tlp tlp-rdw >/dev/null 2>&1
-            INSTALLED_PACKAGES+=(tlp tlp-rdw)
+            install_packages_batch "dnf" "tlp" "tlp-rdw"
         fi
         
         # Enable TLP (it conflicts with power-profiles-daemon, so disable that first)
@@ -179,8 +176,7 @@ apply_laptop_optimizations() {
     # Enable laptop-mode-tools if available
     if ! rpm -q laptop-mode-tools &>/dev/null; then
         ui_info "Installing laptop-mode-tools..."
-        sudo $DNF_CMD install -y laptop-mode-tools >/dev/null 2>&1
-        INSTALLED_PACKAGES+=(laptop-mode-tools)
+        install_packages_batch "dnf" "laptop-mode-tools"
     fi
     
     ui_success "Laptop optimizations applied"

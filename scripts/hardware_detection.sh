@@ -148,34 +148,11 @@ case "$GPU_VENDOR" in
             "akmod-nvidia"
             "nvidia-settings"
             "nvidia-utils"
+            "nvidia-driver-cuda"
         )
         
-        for package in "${NVIDIA_PACKAGES[@]}"; do
-            if ! rpm -q "$package" >/dev/null 2>&1; then
-                print_info "Installing $package..."
-                if sudo $DNF_CMD install -y "$package"; then
-                    print_success "$package installed successfully."
-                    INSTALLED_PACKAGES+=("$package")
-                else
-                    print_error "Failed to install $package."
-                fi
-            else
-                print_warning "$package is already installed. Skipping."
-            fi
-        done
-        
-        # Install additional NVIDIA utilities
-        print_info "Installing additional NVIDIA utilities..."
-        if ! command -v nvidia-smi >/dev/null; then
-            if sudo $DNF_CMD install -y nvidia-driver-cuda; then
-                print_success "NVIDIA CUDA drivers installed successfully."
-                INSTALLED_PACKAGES+=(nvidia-driver-cuda)
-            else
-                print_error "Failed to install NVIDIA CUDA drivers."
-            fi
-        else
-            print_warning "NVIDIA CUDA drivers are already installed. Skipping."
-        fi
+        # Use unified batch installation for all NVIDIA packages
+        install_packages_batch "dnf" "${NVIDIA_PACKAGES[@]}"
         ;;
         
     "amd")
@@ -186,19 +163,8 @@ case "$GPU_VENDOR" in
             "rocm-opencl-runtime"
         )
         
-        for package in "${AMD_PACKAGES[@]}"; do
-            if ! rpm -q "$package" >/dev/null 2>&1; then
-                print_info "Installing $package..."
-                if sudo $DNF_CMD install -y "$package"; then
-                    print_success "$package installed successfully."
-                    INSTALLED_PACKAGES+=("$package")
-                else
-                    print_error "Failed to install $package."
-                fi
-            else
-                print_warning "$package is already installed. Skipping."
-            fi
-        done
+        # Use unified batch installation for all AMD packages
+        install_packages_batch "dnf" "${AMD_PACKAGES[@]}"
         ;;
         
     "intel")
@@ -209,19 +175,8 @@ case "$GPU_VENDOR" in
             "intel-media-driver"
         )
         
-        for package in "${INTEL_PACKAGES[@]}"; do
-            if ! rpm -q "$package" >/dev/null 2>&1; then
-                print_info "Installing $package..."
-                if sudo $DNF_CMD install -y "$package" 2>/dev/null; then
-                    print_success "$package installed successfully."
-                    INSTALLED_PACKAGES+=("$package")
-                else
-                    print_warning "Failed to install $package. Package may not be available."
-                fi
-            else
-                print_warning "$package is already installed. Skipping."
-            fi
-        done
+        # Use unified batch installation for all Intel packages
+        install_packages_batch "dnf" "${INTEL_PACKAGES[@]}"
         ;;
 esac
 

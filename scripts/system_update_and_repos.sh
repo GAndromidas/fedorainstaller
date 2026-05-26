@@ -30,13 +30,7 @@ system_update_and_repos() {
     step "Install helper utilities"
     print_info "Installing helper utilities..."
     HELPER_PACKAGES=("fastfetch" "btop" "inxi" "hwinfo" "lshw" "usbutils" "pciutils")
-    for package in "${HELPER_PACKAGES[@]}"; do
-        if ! rpm -q "$package" &>/dev/null; then
-            print_info "Installing $package..."
-            sudo $DNF_CMD install -y "$package" >/dev/null 2>&1
-            INSTALLED_PACKAGES+=("$package")
-        fi
-    done
+    install_packages_batch "dnf" "${HELPER_PACKAGES[@]}"
     print_success "Helper utilities installed."
 
     # --- Enable COPR Repos from YAML ---
@@ -89,18 +83,12 @@ system_update_and_repos() {
     local cpu_vendor=$(detect_cpu_vendor)
     case "$cpu_vendor" in
         "intel")
-            if ! rpm -q microcode_ctl &>/dev/null; then
-                print_info "Installing Intel microcode..."
-                sudo $DNF_CMD install -y microcode_ctl >/dev/null 2>&1
-                INSTALLED_PACKAGES+=(microcode_ctl)
-            fi
+            print_info "Installing Intel microcode..."
+            install_packages_batch "dnf" "microcode_ctl"
             ;;
         "amd")
-            if ! rpm -q microcode_ctl &>/dev/null; then
-                print_info "Installing AMD microcode..."
-                sudo $DNF_CMD install -y microcode_ctl >/dev/null 2>&1
-                INSTALLED_PACKAGES+=(microcode_ctl)
-            fi
+            print_info "Installing AMD microcode..."
+            install_packages_batch "dnf" "microcode_ctl"
             ;;
     esac
     print_success "CPU microcode installed."
@@ -109,12 +97,7 @@ system_update_and_repos() {
     step "Install kernel headers"
     print_info "Installing kernel headers..."
     KERNEL_PACKAGES=("kernel-devel" "kernel-headers")
-    for package in "${KERNEL_PACKAGES[@]}"; do
-        if ! rpm -q "$package" &>/dev/null; then
-            sudo $DNF_CMD install -y "$package" >/dev/null 2>&1
-            INSTALLED_PACKAGES+=("$package")
-        fi
-    done
+    install_packages_batch "dnf" "${KERNEL_PACKAGES[@]}"
     print_success "Kernel headers installed."
 }
 
