@@ -1525,5 +1525,4 @@ show_resume_menu() {
                 fi
             fi
         fi
-    fi
 }
