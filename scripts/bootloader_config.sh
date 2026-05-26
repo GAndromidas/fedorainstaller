@@ -2,7 +2,9 @@
 set -uo pipefail
 
 # Configure bootloader (GRUB2/systemd-boot) with dual-boot support
-source "$(dirname "$0")/../common.sh"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common.sh"
 
 step "Configure bootloader"
 

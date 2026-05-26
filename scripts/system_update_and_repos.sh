@@ -1,6 +1,8 @@
 #!/bin/bash
 # Configure DNF, enable RPM Fusion, enable COPR, enable Flathub, install helper utilities, then update system and flatpaks
-source "$(dirname "$0")/../common.sh"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common.sh"
 
 system_update_and_repos() {
     # --- Configure DNF ---

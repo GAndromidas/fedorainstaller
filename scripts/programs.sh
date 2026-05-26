@@ -1,5 +1,7 @@
 #!/bin/bash
-source "$(dirname "$0")/../common.sh"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common.sh"
 
 step "Install programs from YAML configuration"
 

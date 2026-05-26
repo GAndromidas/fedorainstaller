@@ -1,6 +1,8 @@
 #!/bin/bash
 # Enable all major multimedia codecs from RPM Fusion
-source "$(dirname "$0")/../common.sh"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common.sh"
 
 step "Enabling multimedia codecs (RPM Fusion)"
 
