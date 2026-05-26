@@ -10,6 +10,7 @@ declare -a dnf_packages=()
 declare -a flatpak_packages=()
 declare -a de_dnf_packages=()
 declare -a de_flatpak_packages=()
+declare -a de_remove_packages=()
 
 # Check if programs.yaml exists
 PROGRAMS_YAML="$SCRIPT_DIR/../configs/programs.yaml"
@@ -83,6 +84,7 @@ fi
 if [ -n "$DE" ]; then
     read_yaml_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.install" "de_dnf_packages"
     read_yaml_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.flatpak" "de_flatpak_packages"
+    read_yaml_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.remove" "de_remove_packages"
     
     # Add DE-specific packages to main arrays
     dnf_packages+=("${de_dnf_packages[@]}")
@@ -91,6 +93,30 @@ if [ -n "$DE" ]; then
     print_info "Detected desktop environment: $DE"
     print_info "Added ${#de_dnf_packages[@]} DE-specific DNF packages"
     print_info "Added ${#de_flatpak_packages[@]} DE-specific Flatpak packages"
+    print_info "Found ${#de_remove_packages[@]} DE-specific packages to remove"
+fi
+
+# Remove DE-specific packages first
+if [ ${#de_remove_packages[@]} -gt 0 ]; then
+    print_info "Removing ${#de_remove_packages[@]} DE-specific packages: ${de_remove_packages[*]}"
+    
+    # Filter out packages that are not installed
+    declare -a packages_to_remove=()
+    for pkg in "${de_remove_packages[@]}"; do
+        if rpm -q "$pkg" &>/dev/null; then
+            packages_to_remove+=("$pkg")
+        fi
+    done
+    
+    if [ ${#packages_to_remove[@]} -gt 0 ]; then
+        if sudo $DNF_CMD remove -y "${packages_to_remove[@]}" 2>&1 | tee -a "$INSTALL_LOG"; then
+            print_success "Removed ${#packages_to_remove[@]} packages successfully"
+        else
+            print_warning "Some packages may not have been removed"
+        fi
+    else
+        print_info "None of the specified packages are installed"
+    fi
 fi
 
 # Install DNF packages using unified batch installation
