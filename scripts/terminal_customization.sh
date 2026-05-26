@@ -79,6 +79,22 @@ customize_terminal() {
         print_warning "starship.toml not found in configs. Skipping."
     fi
 
+    # --- Fastfetch config ---
+    if command -v fastfetch >/dev/null 2>&1; then
+        print_info "Configuring Fastfetch..."
+        CONFIG_DIR="$HOME/.config/fastfetch"
+        INSTALLER_CONFIG="$(dirname "$0")/../configs/config.jsonc"
+        mkdir -p "$CONFIG_DIR"
+        if fastfetch --gen-config --file "$CONFIG_DIR/config.jsonc" 2>/dev/null; then
+            if [ -f "$INSTALLER_CONFIG" ]; then
+                cp "$INSTALLER_CONFIG" "$CONFIG_DIR/config.jsonc"
+                print_success "Custom Fastfetch config copied."
+            else
+                print_warning "Custom config.jsonc not found. Using default."
+            fi
+        fi
+    fi
+
     # --- DE-specific tweaks ---
     if [ "$XDG_CURRENT_DESKTOP" ]; then
         case "${XDG_CURRENT_DESKTOP,,}" in

@@ -1,9 +1,69 @@
 #!/bin/bash
+set -uo pipefail
 
 source "$(dirname "$0")/common.sh"
 
 # Start timing the installation
 START_TIME=$(date +%s)
+
+# Command-line arguments
+RESUME_MODE=false
+DRY_RUN=false
+SPECIFIC_STEP=""
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --resume)
+            RESUME_MODE=true
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        --step)
+            SPECIFIC_STEP="$2"
+            shift 2
+            ;;
+        --help)
+            echo "Usage: $0 [OPTIONS]"
+            echo "Options:"
+            echo "  --resume    Resume from last interrupted installation"
+            echo "  --dry-run   Preview changes without executing"
+            echo "  --step NAME Run only a specific step"
+            echo "  --help      Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Dry-run mode notification
+if [ "$DRY_RUN" = true ]; then
+    echo -e "${YELLOW}=== DRY-RUN MODE ===${RESET}"
+    echo -e "${YELLOW}No changes will be made to the system${RESET}"
+    echo -e "${YELLOW}====================${RESET}"
+    echo
+fi
+
+# Resume mode notification
+if [ "$RESUME_MODE" = true ]; then
+    if [ -f "$STATE_FILE" ]; then
+        echo -e "${CYAN}=== RESUME MODE ===${RESET}"
+        echo -e "${CYAN}Resuming from last interrupted installation${RESET}"
+        echo -e "${CYAN}==================${RESET}"
+        echo
+        load_state
+    else
+        echo -e "${YELLOW}No state file found. Starting fresh installation.${RESET}"
+        RESUME_MODE=false
+    fi
+fi
 
 # Fedora ASCII ART
 fedora_ascii() {
@@ -25,12 +85,28 @@ exec > >(tee -a "$LOGFILE") 2>&1
 clear
 fedora_ascii
 
-show_menu
+# Skip menu in resume mode or if running specific step
+if [ "$RESUME_MODE" = false ] && [ -z "$SPECIFIC_STEP" ]; then
+    show_menu
+else
+    # Load installation mode from state if resuming
+    if [ "$RESUME_MODE" = true ]; then
+        if [ -n "${INSTALL_MODE:-}" ]; then
+            echo -e "${CYAN}Resuming with installation mode: $INSTALL_MODE${RESET}"
+        else
+            echo -e "${YELLOW}No installation mode found in state. Please select mode:${RESET}"
+            show_menu
+        fi
+    fi
+fi
 
 # Export variables for child scripts
 export INSTALL_MODE
 export IS_DEFAULT
 export IS_MINIMAL
+export IS_SERVER
+export IS_CUSTOM
+export DRY_RUN
 
 require_sudo
 check_dependencies
@@ -53,13 +129,15 @@ declare -A STEP_FUNCS=(
   [hardware_detection]="scripts/hardware_detection.sh"
   
   # System configuration
-  [enable_services]="scripts/enable_services.sh"
-  [configure_firewalld]="scripts/configure_firewalld.sh"
+  [system_services]="scripts/system_services.sh"
   [bootloader_config]="scripts/bootloader_config.sh"
-  [create_fastfetch_config]="scripts/create_fastfetch_config.sh"
+  
+  # Advanced features
+  [peripheral_detection]="scripts/peripheral_detection.sh"
+  [wakeonlan_config]="scripts/wakeonlan_config.sh"
   
   # Cleanup and security
-  [clear_unused_packages_cache]="scripts/clear_unused_packages_cache.sh"
+  [maintenance]="scripts/maintenance.sh"
   [install_fail2ban]="scripts/install_fail2ban.sh"
 )
 
@@ -70,13 +148,54 @@ export TOTAL_STEPS
 run_step() {
   local step_name="$1"
   local script_path="$(dirname "$0")/${STEP_FUNCS[$step_name]}"
+  
+  # Skip if step already completed and in resume mode
+  if [ "$RESUME_MODE" = true ] && is_step_completed "$step_name"; then
+    echo -e "${YELLOW}Skipping $step_name (already completed)${RESET}"
+    log_to_file "Skipping $step_name (already completed)"
+    return 0
+  fi
+  
+  # Skip if running specific step and this is not it
+  if [ -n "$SPECIFIC_STEP" ] && [ "$step_name" != "$SPECIFIC_STEP" ]; then
+    return 0
+  fi
+  
   step "$step_name"
-  if ! bash "$script_path"; then
+  
+  if [ "$DRY_RUN" = true ]; then
+    echo -e "${YELLOW}[DRY-RUN] Would execute: $script_path${RESET}"
+    log_to_file "[DRY-RUN] Would execute: $script_path"
+    save_state "$step_name" "completed"
+    return 0
+  fi
+  
+  if bash "$script_path"; then
+    save_state "$step_name" "completed"
+    return 0
+  else
     print_error "$step_name failed"
+    save_state "$step_name" "failed"
+    return 1
   fi
 }
 
 # Run all steps in logical order
+# Skip gaming_tweaks in server mode
+if [ "$INSTALL_MODE" = "server" ]; then
+    unset 'STEP_FUNCS[gaming_tweaks]'
+fi
+
+# Skip peripheral detection and wakeonlan in minimal mode
+if [ "$INSTALL_MODE" = "minimal" ]; then
+    unset 'STEP_FUNCS[peripheral_detection]'
+    unset 'STEP_FUNCS[wakeonlan_config]'
+fi
+
+# Recalculate total steps after mode-specific adjustments
+TOTAL_STEPS=${#STEP_FUNCS[@]}
+export TOTAL_STEPS
+
 print_info "=== System Setup ==="
 run_step set_hostname
 run_step system_update_and_repos
@@ -88,17 +207,25 @@ run_step install_nerd_fonts
 
 print_info "=== Package Installation ==="
 run_step enable_codecs
-run_step gaming_tweaks
+if [ "$INSTALL_MODE" != "server" ]; then
+    run_step gaming_tweaks
+fi
 run_step hardware_detection
 
 print_info "=== System Configuration ==="
-run_step enable_services
-run_step configure_firewalld
+run_step system_services
 run_step bootloader_config
-run_step create_fastfetch_config
+
+print_info "=== Advanced Features ==="
+if [ "$INSTALL_MODE" != "minimal" ]; then
+    run_step peripheral_detection
+fi
+if [ "$INSTALL_MODE" != "minimal" ]; then
+    run_step wakeonlan_config
+fi
 
 print_info "=== Cleanup and Security ==="
-run_step clear_unused_packages_cache
+run_step maintenance
 run_step install_fail2ban
 
 # Check if there were any errors

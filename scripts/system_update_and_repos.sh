@@ -1,5 +1,5 @@
 #!/bin/bash
-# Configure DNF, enable RPM Fusion, enable COPR, enable Flathub, then update system and flatpaks
+# Configure DNF, enable RPM Fusion, enable COPR, enable Flathub, install helper utilities, then update system and flatpaks
 source "$(dirname "$0")/../common.sh"
 
 system_update_and_repos() {
@@ -10,6 +10,7 @@ system_update_and_repos() {
     sudo grep -q '^fastestmirror=True' "$DNF_CONF" || echo "fastestmirror=True" | sudo tee -a "$DNF_CONF"
     sudo grep -q '^max_parallel_downloads=10' "$DNF_CONF" || echo "max_parallel_downloads=10" | sudo tee -a "$DNF_CONF"
     sudo grep -q '^defaultyes=True' "$DNF_CONF" || echo "defaultyes=True" | sudo tee -a "$DNF_CONF"
+    sudo grep -q '^keepcache=False' "$DNF_CONF" || echo "keepcache=False" | sudo tee -a "$DNF_CONF"
     print_success "DNF configuration updated successfully."
 
     # --- Enable RPM Fusion ---
@@ -24,6 +25,19 @@ system_update_and_repos() {
     else
         print_warning "RPM Fusion repositories are already enabled. Skipping."
     fi
+
+    # --- Install Helper Utilities ---
+    step "Install helper utilities"
+    print_info "Installing helper utilities..."
+    HELPER_PACKAGES=("fastfetch" "btop" "inxi" "hwinfo" "lshw" "usbutils" "pciutils")
+    for package in "${HELPER_PACKAGES[@]}"; do
+        if ! rpm -q "$package" &>/dev/null; then
+            print_info "Installing $package..."
+            sudo $DNF_CMD install -y "$package" >/dev/null 2>&1
+            INSTALLED_PACKAGES+=("$package")
+        fi
+    done
+    print_success "Helper utilities installed."
 
     # --- Enable COPR Repos from YAML ---
     step "Enable COPR repositories"
@@ -69,6 +83,39 @@ system_update_and_repos() {
     else
         print_error "System update failed."
     fi
+
+    # --- Install CPU Microcode ---
+    step "Install CPU microcode"
+    local cpu_vendor=$(detect_cpu_vendor)
+    case "$cpu_vendor" in
+        "intel")
+            if ! rpm -q microcode_ctl &>/dev/null; then
+                print_info "Installing Intel microcode..."
+                sudo $DNF_CMD install -y microcode_ctl >/dev/null 2>&1
+                INSTALLED_PACKAGES+=(microcode_ctl)
+            fi
+            ;;
+        "amd")
+            if ! rpm -q microcode_ctl &>/dev/null; then
+                print_info "Installing AMD microcode..."
+                sudo $DNF_CMD install -y microcode_ctl >/dev/null 2>&1
+                INSTALLED_PACKAGES+=(microcode_ctl)
+            fi
+            ;;
+    esac
+    print_success "CPU microcode installed."
+
+    # --- Install Kernel Headers ---
+    step "Install kernel headers"
+    print_info "Installing kernel headers..."
+    KERNEL_PACKAGES=("kernel-devel" "kernel-headers")
+    for package in "${KERNEL_PACKAGES[@]}"; do
+        if ! rpm -q "$package" &>/dev/null; then
+            sudo $DNF_CMD install -y "$package" >/dev/null 2>&1
+            INSTALLED_PACKAGES+=("$package")
+        fi
+    done
+    print_success "Kernel headers installed."
 }
 
 system_update_and_repos

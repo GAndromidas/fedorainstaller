@@ -1,0 +1,30 @@
+# Gaming Mode packages for Fedorainstaller
+# Adapted from archinstaller for Fedora-based distributions
+
+# DNF packages for gaming setup
+dnf:
+  packages:
+    - name: "discord"
+      description: "Voice and text chat for gamers"
+    - name: "gamemode"
+      description: "GameMode daemon for performance optimization"
+    - name: "mangohud"
+      description: "Vulkan/OpenGL overlay for monitoring FPS and more"
+    - name: "steam"
+      description: "Digital distribution platform for games"
+    - name: "wine"
+      description: "Compatibility layer for running Windows applications"
+    - name: "winetricks"
+      description: "Tool to download and install various redistributable runtime libraries"
+
+# Flatpak applications for gaming
+flatpak:
+  apps:
+    - name: "com.heroicgameslauncher.hgl"
+      description: "Heroic Games Launcher for Epic Games Store"
+    - name: "io.github.Faugus.faugus-launcher"
+      description: "Faugus Launcher for game management"
+    - name: "com.vysp3r.ProtonPlus"
+      description: "ProtonPlus for installing Proton-GE"
+    - name: "com.discordapp.Discord"
+      description: "Discord voice and text chat (Flatpak version)"

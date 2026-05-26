@@ -148,7 +148,6 @@ case "$GPU_VENDOR" in
             "akmod-nvidia"
             "nvidia-settings"
             "nvidia-utils"
-            "lib32-nvidia-utils"
         )
         
         for package in "${NVIDIA_PACKAGES[@]}"; do
@@ -183,7 +182,6 @@ case "$GPU_VENDOR" in
         print_info "Installing AMD drivers and utilities..."
         AMD_PACKAGES=(
             "mesa-vulkan-drivers"
-            "lib32-mesa-vulkan-drivers"
             "vulkan-tools"
             "rocm-opencl-runtime"
         )
@@ -224,19 +222,6 @@ case "$GPU_VENDOR" in
                 print_warning "$package is already installed. Skipping."
             fi
         done
-        
-        # Try to install lib32-mesa-vulkan-drivers separately
-        if ! rpm -q lib32-mesa-vulkan-drivers >/dev/null 2>&1; then
-            print_info "Installing lib32-mesa-vulkan-drivers..."
-            if sudo $DNF_CMD install -y lib32-mesa-vulkan-drivers 2>/dev/null; then
-                print_success "lib32-mesa-vulkan-drivers installed successfully."
-                INSTALLED_PACKAGES+=(lib32-mesa-vulkan-drivers)
-            else
-                print_warning "lib32-mesa-vulkan-drivers not available. Skipping."
-            fi
-        else
-            print_warning "lib32-mesa-vulkan-drivers is already installed. Skipping."
-        fi
         ;;
 esac
 
