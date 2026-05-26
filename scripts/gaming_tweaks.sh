@@ -6,19 +6,29 @@ source "$SCRIPT_DIR/../common.sh"
 
 step "Gaming and performance tweaks"
 
-# Check if user wants gaming tweaks (default to No)
+# Check if user wants gaming tweaks (default to Yes)
 echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
 echo -e "${CYAN}🎮 GAMING & PERFORMANCE TWEAKS${RESET}"
 echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
 echo -e "${CYAN}Would you like to install gaming and performance tweaks?${RESET}"
 echo -e "${YELLOW}This includes: MangoHud, GameMode, Steam, Lutris, Wine, and more.${RESET}"
 echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
-read -r -p "Enter Y to install gaming tweaks, or press Enter to skip: " response
-response="${response:-N}"  # Default to N if empty
-if [[ ! "$response" =~ ^[Yy]$ ]]; then
-    print_info "Gaming tweaks skipped."
-    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
-    exit 0
+
+if supports_gum; then
+    local choice=$(gum choose --cursor="-> " --selected.foreground "green" \
+        "Yes - Install gaming and performance tweaks" \
+        "No - Skip gaming tweaks")
+    if [[ "$choice" == "No"* ]]; then
+        print_info "Gaming tweaks skipped."
+        return 0
+    fi
+else
+    read -r -p "Enter Y to install gaming tweaks, or press Enter to skip: " response
+    response="${response:-N}"  # Default to N if empty
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        print_info "Gaming tweaks skipped."
+        return 0
+    fi
 fi
 echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
 

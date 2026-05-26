@@ -140,7 +140,7 @@ gum_input() {
 # Gum-based confirm with fallback
 gum_confirm() {
     local prompt="$1"
-    local default="${2:-false}"
+    local default="${2:-true}"  # Default to true (yes)
     
     if supports_gum; then
         if [ "$default" = "true" ]; then
