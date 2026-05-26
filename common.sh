@@ -110,6 +110,11 @@ supports_gum() {
     command -v gum >/dev/null 2>&1
 }
 
+# Force gum to use colors
+export GUM_COLOR=always
+export FORCE_COLOR=1
+export CLICOLOR_FORCE=1
+
 # Gum-based input with fallback
 gum_input() {
     local prompt="$1"
@@ -210,13 +215,14 @@ show_gum_menu() {
         detected_os=$(grep -E '^PRETTY_NAME=' /etc/os-release | cut -d'"' -f2)
     fi
     
-    gum style --margin "1 0" --foreground "cyan" "Your OS is: $detected_os"
+    echo -e "${CYAN}Your OS is: $detected_os${RESET}"
     echo ""
     
-    gum style --margin "1 0" --foreground "yellow" "This script will transform your fresh Fedora installation into a"
-    gum style --margin "0 0 1 0" --foreground "yellow" "fully configured, optimized system with all the tools you need!"
+    echo -e "${YELLOW}This script will transform your fresh Fedora installation into a${RESET}"
+    echo -e "${YELLOW}fully configured, optimized system with all the tools you need!${RESET}"
+    echo ""
 
-    local choice=$(gum choose --cursor="-> " --selected.foreground "green" --cursor.foreground "green" \
+    local choice=$(gum choose --cursor="-> " \
         "Standard - Complete setup with all packages (intermediate users)" \
         "Minimal - Essential tools only (recommended for new users)" \
         "Server - Headless server setup (Docker, SSH, etc.)" \
@@ -261,7 +267,7 @@ show_gum_menu() {
             fi
             ;;
         "Exit"*)
-            gum style --foreground "yellow" "Installation cancelled. You can run this script again anytime."
+            echo -e "${YELLOW}Installation cancelled. You can run this script again anytime.${RESET}"
             exit 0
             ;;
     esac
@@ -536,47 +542,29 @@ print_unified_step_header() {
     local total="$2"
     local title="$3"
 
-    if supports_gum; then
-        echo ""
-        gum style --margin "1 2" --border thick --padding "1 2" --foreground "white" "Step $step_num of $total: $title"
-        echo ""
-    else
-        echo ""
-        echo -e "${CYAN}============================================================${RESET}"
-        echo -e "${CYAN}  Step $step_num of $total: $title${RESET}"
-        echo -e "${CYAN}============================================================${RESET}"
-        echo ""
-    fi
+    echo ""
+    echo -e "${CYAN}============================================================${RESET}"
+    echo -e "${CYAN}  Step $step_num of $total: $title${RESET}"
+    echo -e "${CYAN}============================================================${RESET}"
+    echo ""
 }
 
 print_unified_substep() {
     local description="$1"
 
-    if supports_gum; then
-        gum style --margin "0 2" --foreground "yellow" "> $description"
-    else
-        echo -e "${CYAN}> $description${RESET}"
-    fi
+    echo -e "${CYAN}> $description${RESET}"
 }
 
 print_unified_success() {
     local message="$1"
 
-    if supports_gum; then
-        gum style --margin "0 4" --foreground "green" "✓ $message"
-    else
-        echo -e "${GREEN}✓ $message${RESET}"
-    fi
+    echo -e "${GREEN}✓ $message${RESET}"
 }
 
 print_unified_error() {
     local message="$1"
 
-    if supports_gum; then
-        gum style --margin "0 4" --foreground "red" "✗ $message"
-    else
-        echo -e "${RED}✗ $message${RESET}"
-    fi
+    echo -e "${RED}✗ $message${RESET}"
 }
 
 # ============================================================================
@@ -585,30 +573,18 @@ print_unified_error() {
 
 print_header() {
     local title="$1"; shift
-    if supports_gum; then
-        gum style --border double --margin "1 2" --padding "1 4" --foreground "cyan" --border-foreground "cyan" "$title"
-        while (( "$#" )); do
-            gum style --margin "1 0 0 0" --foreground "yellow" "$1"
-            shift
-        done
-    else
-        echo "$title"
-        echo "----------------------------------------"
-        while (( "$#" )); do
-            echo "$1"
-            shift
-        done
-    fi
+    echo -e "${CYAN}========================================${RESET}"
+    echo -e "${CYAN}$title${RESET}"
+    echo -e "${CYAN}========================================${RESET}"
+    while (( "$#" )); do
+        echo -e "${YELLOW}$1${RESET}"
+        shift
+    done
 }
 
 print_step_header() {
     local step_num="$1"; local total="$2"; local title="$3"
-    if supports_gum; then
-        echo ""
-        gum style --border normal --margin "1 0" --padding "0 2" --foreground "cyan" --border-foreground "cyan" "Step ${step_num}/${total}: ${title}"
-    else
-        echo -e "${CYAN}Step ${step_num}/${total}: ${title}${RESET}"
-    fi
+    echo -e "${CYAN}Step ${step_num}/${total}: ${title}${RESET}"
 }
 
 simple_banner() {
@@ -877,11 +853,7 @@ install_package_generic() {
         *) manager_name="Unknown" ;;
     esac
     
-    if supports_gum; then
-        gum style --foreground "cyan" "Installing ${total} packages via ${manager_name}..."
-    else
-        echo -e "${CYAN}Installing ${total} packages via ${manager_name}...${RESET}"
-    fi
+    echo -e "${CYAN}Installing ${total} packages via ${manager_name}...${RESET}"
     
     for pkg in "${pkgs[@]}"; do
         ((current++))
@@ -1432,20 +1404,19 @@ show_resume_menu() {
         fi
 
         echo ""
-        if supports_gum; then
-            gum style --foreground "yellow" "Installation Progress Summary"
-            echo ""
-            for i in "${!completed_steps[@]}"; do
+        echo -e "${YELLOW}Installation Progress Summary${RESET}"
+        echo ""
+        for i in "${!completed_steps[@]}"; do
                 local step="${completed_steps[$i]}"
                 local status="${step_status[$i]}"
                 local display_step="${step#*: }"
                 
                 case "$status" in
                     "completed")
-                        gum style --foreground "green" "  [COMPLETED] $display_step" >/dev/null
+                        echo -e "${GREEN}  [COMPLETED] $display_step${RESET}"
                         ;;
                     "failed")
-                        gum style --foreground "red" "  [FAILED] $display_step" >/dev/null
+                        echo -e "${RED}  [FAILED] $display_step${RESET}"
                         ;;
                 esac
             done

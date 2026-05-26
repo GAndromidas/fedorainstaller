@@ -18,9 +18,11 @@ customize_terminal() {
 
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
         print_info "Installing Oh-My-Zsh..."
-        yes | sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
-            && print_success "Oh-My-Zsh installed." \
-            || print_error "Failed to install Oh-My-Zsh."
+        if sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended; then
+            print_success "Oh-My-Zsh installed."
+        else
+            print_error "Failed to install Oh-My-Zsh."
+        fi
     else
         print_warning "Oh-My-Zsh is already installed. Skipping."
     fi
