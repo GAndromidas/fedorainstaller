@@ -75,8 +75,8 @@ customize_terminal() {
         print_warning "starship is already installed. Skipping."
     fi
     mkdir -p "$HOME/.config"
-    if [ -f "$HOME/fedorainstaller/configs/starship.toml" ]; then
-        cp "$HOME/fedorainstaller/configs/starship.toml" "$HOME/.config/starship.toml"
+    if [ -f "$SCRIPT_DIR/../configs/starship.toml" ]; then
+        cp "$SCRIPT_DIR/../configs/starship.toml" "$HOME/.config/starship.toml"
         print_success "Starship config copied."
     else
         print_warning "starship.toml not found in configs. Skipping."
@@ -86,7 +86,7 @@ customize_terminal() {
     if command -v fastfetch >/dev/null 2>&1; then
         print_info "Configuring Fastfetch..."
         CONFIG_DIR="$HOME/.config/fastfetch"
-        INSTALLER_CONFIG="$(dirname "$0")/../configs/config.jsonc"
+        INSTALLER_CONFIG="$SCRIPT_DIR/../configs/config.jsonc"
         mkdir -p "$CONFIG_DIR"
         if fastfetch --gen-config --file "$CONFIG_DIR/config.jsonc" 2>/dev/null; then
             if [ -f "$INSTALLER_CONFIG" ]; then
