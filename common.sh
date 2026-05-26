@@ -210,13 +210,13 @@ show_gum_menu() {
         detected_os=$(grep -E '^PRETTY_NAME=' /etc/os-release | cut -d'"' -f2)
     fi
     
-    gum style --margin "1 0" --foreground 11 "Your OS is: $detected_os"
+    gum style --margin "1 0" --foreground "cyan" "Your OS is: $detected_os"
     echo ""
     
-    gum style --margin "1 0" --foreground 226 "This script will transform your fresh Fedora installation into a"
-    gum style --margin "0 0 1 0" --foreground 226 "fully configured, optimized system with all the tools you need!"
+    gum style --margin "1 0" --foreground "yellow" "This script will transform your fresh Fedora installation into a"
+    gum style --margin "0 0 1 0" --foreground "yellow" "fully configured, optimized system with all the tools you need!"
 
-    local choice=$(gum choose --cursor="-> " --selected.foreground 51 --cursor.foreground 51 \
+    local choice=$(gum choose --cursor="-> " --selected.foreground "green" --cursor.foreground "green" \
         "Standard - Complete setup with all packages (intermediate users)" \
         "Minimal - Essential tools only (recommended for new users)" \
         "Server - Headless server setup (Docker, SSH, etc.)" \
@@ -261,7 +261,7 @@ show_gum_menu() {
             fi
             ;;
         "Exit"*)
-            gum style --foreground 226 "Installation cancelled. You can run this script again anytime."
+            gum style --foreground "yellow" "Installation cancelled. You can run this script again anytime."
             exit 0
             ;;
     esac
@@ -538,7 +538,7 @@ print_unified_step_header() {
 
     if supports_gum; then
         echo ""
-        gum style --margin "1 2" --border thick --padding "1 2" --foreground 15 "Step $step_num of $total: $title"
+        gum style --margin "1 2" --border thick --padding "1 2" --foreground "white" "Step $step_num of $total: $title"
         echo ""
     else
         echo ""
@@ -553,7 +553,7 @@ print_unified_substep() {
     local description="$1"
 
     if supports_gum; then
-        gum style --margin "0 2" --foreground 226 "> $description"
+        gum style --margin "0 2" --foreground "yellow" "> $description"
     else
         echo -e "${CYAN}> $description${RESET}"
     fi
@@ -563,7 +563,7 @@ print_unified_success() {
     local message="$1"
 
     if supports_gum; then
-        gum style --margin "0 4" --foreground 10 "✓ $message"
+        gum style --margin "0 4" --foreground "green" "✓ $message"
     else
         echo -e "${GREEN}✓ $message${RESET}"
     fi
@@ -573,7 +573,7 @@ print_unified_error() {
     local message="$1"
 
     if supports_gum; then
-        gum style --margin "0 4" --foreground 196 "✗ $message"
+        gum style --margin "0 4" --foreground "red" "✗ $message"
     else
         echo -e "${RED}✗ $message${RESET}"
     fi
@@ -586,9 +586,9 @@ print_unified_error() {
 print_header() {
     local title="$1"; shift
     if supports_gum; then
-        gum style --border double --margin "1 2" --padding "1 4" --foreground 51 --border-foreground 51 "$title"
+        gum style --border double --margin "1 2" --padding "1 4" --foreground "cyan" --border-foreground "cyan" "$title"
         while (( "$#" )); do
-            gum style --margin "1 0 0 0" --foreground 226 "$1"
+            gum style --margin "1 0 0 0" --foreground "yellow" "$1"
             shift
         done
     else
@@ -605,7 +605,7 @@ print_step_header() {
     local step_num="$1"; local total="$2"; local title="$3"
     if supports_gum; then
         echo ""
-        gum style --border normal --margin "1 0" --padding "0 2" --foreground 51 --border-foreground 51 "Step ${step_num}/${total}: ${title}"
+        gum style --border normal --margin "1 0" --padding "0 2" --foreground "cyan" --border-foreground "cyan" "Step ${step_num}/${total}: ${title}"
     else
         echo -e "${CYAN}Step ${step_num}/${total}: ${title}${RESET}"
     fi
@@ -878,7 +878,7 @@ install_package_generic() {
     esac
     
     if supports_gum; then
-        gum style --foreground 51 "Installing ${total} packages via ${manager_name}..."
+        gum style --foreground "cyan" "Installing ${total} packages via ${manager_name}..."
     else
         echo -e "${CYAN}Installing ${total} packages via ${manager_name}...${RESET}"
     fi
@@ -1433,7 +1433,7 @@ show_resume_menu() {
 
         echo ""
         if supports_gum; then
-            gum style --foreground 220 "Installation Progress Summary"
+            gum style --foreground "yellow" "Installation Progress Summary"
             echo ""
             for i in "${!completed_steps[@]}"; do
                 local step="${completed_steps[$i]}"
@@ -1442,10 +1442,10 @@ show_resume_menu() {
                 
                 case "$status" in
                     "completed")
-                        gum style --foreground 10 "  [COMPLETED] $display_step" >/dev/null
+                        gum style --foreground "green" "  [COMPLETED] $display_step" >/dev/null
                         ;;
                     "failed")
-                        gum style --foreground 196 "  [FAILED] $display_step" >/dev/null
+                        gum style --foreground "red" "  [FAILED] $display_step" >/dev/null
                         ;;
                 esac
             done

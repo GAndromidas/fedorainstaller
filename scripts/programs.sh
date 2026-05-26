@@ -12,7 +12,7 @@ declare -a de_dnf_packages=()
 declare -a de_flatpak_packages=()
 
 # Check if programs.yaml exists
-PROGRAMS_YAML="$(dirname "$0")/../configs/programs.yaml"
+PROGRAMS_YAML="$SCRIPT_DIR/../configs/programs.yaml"
 if [[ ! -f "$PROGRAMS_YAML" ]]; then
     print_error "Programs configuration file not found: $PROGRAMS_YAML"
     exit 1
