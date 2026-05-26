@@ -356,24 +356,9 @@ else
   fi
 fi
 
-# Step 2: Set Hostname
-if is_step_complete "set_hostname"; then
-  ui_info "Step 2 (Set Hostname) already completed - skipping"
-else
-  step "Set Hostname"
-  ui_info "Configuring hostname..."
-  if source "$SCRIPTS_DIR/set_hostname.sh"; then
-    mark_step_complete_with_progress "set_hostname" "completed"
-  else
-    mark_step_complete_with_progress "set_hostname" "failed"
-    log_error "Hostname configuration failed"
-    ui_warn "Hostname configuration failed but continuing installation"
-  fi
-fi
-
-# Step 3: Terminal Customization
+# Step 2: Terminal Customization
 if is_step_complete "terminal_customization"; then
-  ui_info "Step 3 (Terminal Customization) already completed - skipping"
+  ui_info "Step 2 (Terminal Customization) already completed - skipping"
 else
   step "Terminal Customization"
   ui_info "Setting up terminal environment..."
@@ -386,9 +371,9 @@ else
   fi
 fi
 
-# Step 4: Install Programs
+# Step 3: Install Programs
 if is_step_complete "install_programs"; then
-  ui_info "Step 4 (Install Programs) already completed - skipping"
+  ui_info "Step 3 (Install Programs) already completed - skipping"
 else
   step "Install Programs"
   ui_info "Installing applications..."
@@ -401,9 +386,9 @@ else
   fi
 fi
 
-# Step 5: Install Nerd Fonts
+# Step 4: Install Nerd Fonts
 if is_step_complete "install_nerd_fonts"; then
-  ui_info "Step 5 (Install Nerd Fonts) already completed - skipping"
+  ui_info "Step 4 (Install Nerd Fonts) already completed - skipping"
 else
   step "Install Nerd Fonts"
   ui_info "Installing nerd fonts..."
@@ -416,9 +401,9 @@ else
   fi
 fi
 
-# Step 6: Enable Codecs
+# Step 5: Enable Codecs
 if is_step_complete "enable_codecs"; then
-  ui_info "Step 6 (Enable Codecs) already completed - skipping"
+  ui_info "Step 5 (Enable Codecs) already completed - skipping"
 else
   step "Enable Codecs"
   ui_info "Enabling multimedia codecs..."
@@ -431,12 +416,12 @@ else
   fi
 fi
 
-# Step 7: Gaming Tweaks (skip in server mode)
+# Step 6: Gaming Tweaks (skip in server mode)
 if [[ "$INSTALL_MODE" == "server" ]]; then
   ui_info "Server mode selected, skipping Gaming Tweaks."
 else
   if is_step_complete "gaming_tweaks"; then
-    ui_info "Step 7 (Gaming Tweaks) already completed - skipping"
+    ui_info "Step 6 (Gaming Tweaks) already completed - skipping"
   else
     step "Gaming Tweaks"
     ui_info "Applying gaming optimizations..."
@@ -450,9 +435,9 @@ else
   fi
 fi
 
-# Step 8: Hardware Detection
+# Step 7: Hardware Detection
 if is_step_complete "hardware_detection"; then
-  ui_info "Step 8 (Hardware Detection) already completed - skipping"
+  ui_info "Step 7 (Hardware Detection) already completed - skipping"
 else
   step "Hardware Detection"
   ui_info "Detecting and configuring hardware..."
@@ -465,9 +450,9 @@ else
   fi
 fi
 
-# Step 9: System Services
+# Step 8: System Services
 if is_step_complete "system_services"; then
-  ui_info "Step 9 (System Services) already completed - skipping"
+  ui_info "Step 8 (System Services) already completed - skipping"
 else
   step "System Services"
   ui_info "Configuring system services..."
@@ -480,9 +465,9 @@ else
   fi
 fi
 
-# Step 10: Bootloader Configuration
+# Step 9: Bootloader Configuration
 if is_step_complete "bootloader_config"; then
-  ui_info "Step 10 (Bootloader Configuration) already completed - skipping"
+  ui_info "Step 9 (Bootloader Configuration) already completed - skipping"
 else
   step "Bootloader Configuration"
   ui_info "Configuring bootloader..."
@@ -500,12 +485,12 @@ else
   fi
 fi
 
-# Step 11: Peripheral Detection (skip in minimal mode)
+# Step 10: Peripheral Detection (skip in minimal mode)
 if [[ "$INSTALL_MODE" == "minimal" ]]; then
   ui_info "Minimal mode selected, skipping Peripheral Detection."
 else
   if is_step_complete "peripheral_detection"; then
-    ui_info "Step 11 (Peripheral Detection) already completed - skipping"
+    ui_info "Step 10 (Peripheral Detection) already completed - skipping"
   else
     step "Peripheral Detection"
     ui_info "Detecting peripherals..."
@@ -519,12 +504,12 @@ else
   fi
 fi
 
-# Step 12: Wake-on-LAN Configuration (skip in minimal mode)
+# Step 11: Wake-on-LAN Configuration (skip in minimal mode)
 if [[ "$INSTALL_MODE" == "minimal" ]]; then
   ui_info "Minimal mode selected, skipping Wake-on-LAN Configuration."
 else
   if is_step_complete "wakeonlan_config"; then
-    ui_info "Step 12 (Wake-on-LAN Configuration) already completed - skipping"
+    ui_info "Step 11 (Wake-on-LAN Configuration) already completed - skipping"
   else
     step "Wake-on-LAN Configuration"
     ui_info "Configuring Wake-on-LAN..."
@@ -538,9 +523,9 @@ else
   fi
 fi
 
-# Step 13: Maintenance
+# Step 12: Maintenance
 if is_step_complete "maintenance"; then
-  ui_info "Step 13 (Maintenance) already completed - skipping"
+  ui_info "Step 12 (Maintenance) already completed - skipping"
 else
   step "Maintenance"
   ui_info "Running system maintenance..."

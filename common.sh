@@ -43,7 +43,7 @@ STEP_START_TIME=0           # Start time of current step
 INSTALLATION_START_TIME=0   # Overall installation start time
 
 # UI/Flow configuration
-TOTAL_STEPS=12
+TOTAL_STEPS=11
 : "${VERBOSE:=false}"   # Can be overridden/exported by caller
 : "${DRY_RUN:=false}"
 
@@ -53,9 +53,17 @@ LOGFILE="$HOME/.fedorainstaller/install.log"
 STATE_FILE="$HOME/.fedorainstaller.state"
 INSTALL_LOG="$HOME/.fedorainstaller.log"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"  # Script directory
-CONFIGS_DIR="$SCRIPT_DIR/../configs"                           # Config files directory
-SCRIPTS_DIR="$SCRIPT_DIR"                                      # Scripts directory
+# Only set these if not already set by install.sh
+# Note: When sourced from install.sh, these are already set correctly
+if [ -z "$SCRIPT_DIR" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"  # Script directory (fedorainstaller/)
+fi
+if [ -z "$CONFIGS_DIR" ]; then
+    CONFIGS_DIR="$SCRIPT_DIR/configs"                              # Config files directory
+fi
+if [ -z "$SCRIPTS_DIR" ]; then
+    SCRIPTS_DIR="$SCRIPT_DIR/scripts"                              # Scripts directory
+fi
 
 # Ensure critical variables are defined
 : "${HOME:=/home/$USER}"

@@ -252,7 +252,7 @@ The installer includes comprehensive steps for complete system setup:
 
 | Step | Description | Mode Coverage |
 |------|-------------|---------------|
-| **1. System Setup** | Hostname, system updates, repos | All modes |
+| **1. System Setup** | System updates, repos | All modes |
 | **2. Terminal Customization** | Zsh + Oh-My-Zsh + Starship | All modes |
 | **3. Programs Installation** | Mode-specific applications | All modes |
 | **4. Codecs & Gaming** | Multimedia codecs, gaming tools | Default/Custom |
