@@ -18,6 +18,9 @@ configure_traditional_bootloader
 # Configure dual-boot with Windows if detected
 configure_windows_dual_boot
 
+# Configure grub-btrfs for Timeshift snapshot menu entries
+configure_grub_btrfs
+
 # Add kernel parameters for better boot experience
 add_kernel_parameters
 
@@ -163,10 +166,10 @@ add_kernel_parameters() {
         fi
         
         if [ -f "$grub_config" ]; then
-            if ! grep -q "GRUB_CMDLINE_LINUX_DEFAULT" "$grub_config"; then
-                echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"' | sudo tee -a "$grub_config" >/dev/null
+            if ! grep -q "^GRUB_CMDLINE_LINUX=" "$grub_config"; then
+                echo 'GRUB_CMDLINE_LINUX="quiet"' | sudo tee -a "$grub_config" >/dev/null
             else
-                sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 quiet splash"/' "$grub_config"
+                sudo sed -i 's/^GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX="\1 quiet"/' "$grub_config"
             fi
             
             # Regenerate GRUB
@@ -179,4 +182,65 @@ add_kernel_parameters() {
     fi
     
     ui_success "Kernel parameters added"
+}
+
+configure_grub_btrfs() {
+    # Only for GRUB with Btrfs filesystem
+    if [ "$BOOTLOADER" != "grub" ]; then
+        return 0
+    fi
+
+    # Check if root filesystem is Btrfs
+    local root_fs
+    root_fs=$(findmnt -n -o FSTYPE /)
+    if [ "$root_fs" != "btrfs" ]; then
+        ui_info "Root filesystem is not Btrfs — skipping grub-btrfs"
+        return 0
+    fi
+
+    # Check if timeshift is installed
+    if ! rpm -q timeshift &>/dev/null; then
+        return 0
+    fi
+
+    # Enable COPR and install grub-btrfs
+    if ! rpm -q grub-btrfs &>/dev/null; then
+        ui_info "Installing grub-btrfs for Timeshift snapshot GRUB entries..."
+        if sudo $DNF_CMD copr enable -y kylegospo/grub-btrfs 2>/dev/null; then
+            if install_packages_batch "dnf" "grub-btrfs" "inotify-tools"; then
+                ui_success "grub-btrfs installed"
+            else
+                ui_warn "grub-btrfs installation failed"
+                return 1
+            fi
+        else
+            ui_warn "Failed to enable COPR kylegospo/grub-btrfs"
+            return 1
+        fi
+    fi
+
+    local grub_btrfs_config="/etc/default/grub-btrfs/config"
+
+    # Configure grub-btrfs for Fedora paths
+    if [ -f "$grub_btrfs_config" ]; then
+        sudo sed -i 's|^GRUB_BTRFS_MKCONFIG=.*|GRUB_BTRFS_MKCONFIG=/sbin/grub2-mkconfig|' "$grub_btrfs_config"
+        sudo sed -i 's|^GRUB_BTRFS_GRUB_DIRNAME=.*|GRUB_BTRFS_GRUB_DIRNAME="/boot/grub2"|' "$grub_btrfs_config"
+        sudo sed -i 's|^GRUB_BTRFS_SCRIPT_CHECK=.*|GRUB_BTRFS_SCRIPT_CHECK=grub2-script-check|' "$grub_btrfs_config"
+        ui_success "grub-btrfs configured for Fedora"
+    fi
+
+    # Enable the daemon for auto-updating GRUB on snapshot changes
+    if ! systemctl is-active grub-btrfsd &>/dev/null; then
+        sudo systemctl enable --now grub-btrfsd 2>/dev/null || \
+        sudo systemctl enable --now grub-btrfs.path 2>/dev/null || true
+        ui_success "grub-btrfs auto-update service enabled"
+    fi
+
+    # Regenerate GRUB config to include snapshots
+    if [ -d /sys/firmware/efi ]; then
+        sudo grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg >/dev/null 2>&1
+    else
+        sudo grub2-mkconfig -o /boot/grub2/grub.cfg >/dev/null 2>&1
+    fi
+    ui_success "GRUB updated with Timeshift snapshot entries"
 } 

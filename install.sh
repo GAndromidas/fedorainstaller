@@ -48,7 +48,6 @@ FEATURES:
     - Desktop environment detection and optimization (KDE Plasma 6+, GNOME 46+)
     - Security hardening (Firewalld + Fail2ban with SSH protection)
     - Advanced performance tuning
-    - Smart peripheral detection (Logitech, Keychron, Razer, gaming devices)
     - Wake-on-LAN configuration for ethernet devices (desktops only)
     - Zsh shell with Oh-My-Zsh and Starship prompt
     - Resume functionality for interrupted installations
@@ -418,26 +417,8 @@ else
   fi
 fi
 
-# Step 8: Peripheral Setup (skip in minimal mode)
-dashboard_step "Peripheral Setup" 8
-if [[ "$INSTALL_MODE" == "minimal" ]]; then
-  dashboard_skip "Skipped — minimal mode"
-elif is_step_complete "peripheral_setup"; then
-  dashboard_skip
-else
-  if dashboard_run "$SCRIPTS_DIR/peripheral_setup.sh"; then
-    mark_step_complete_with_progress "peripheral_setup" "completed"
-    dashboard_ok
-  else
-    mark_step_complete_with_progress "peripheral_setup" "failed"
-    dashboard_fail
-    log_error "Peripheral setup failed"
-    ui_warn "Peripheral setup failed but continuing installation"
-  fi
-fi
-
-# Step 9: Fail2ban
-dashboard_step "Fail2ban" 9
+# Step 8: Fail2ban
+dashboard_step "Fail2ban" 8
 if is_step_complete "fail2ban"; then
   dashboard_skip
 else
@@ -452,8 +433,8 @@ else
   fi
 fi
 
-# Step 10: Maintenance
-dashboard_step "Maintenance" 10
+# Step 9: Maintenance
+dashboard_step "Maintenance" 9
 if is_step_complete "maintenance"; then
   dashboard_skip
 else

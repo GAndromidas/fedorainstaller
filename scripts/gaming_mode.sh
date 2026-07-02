@@ -37,13 +37,12 @@ GAMING_PACKAGES=(
     "gamemode"
     "steam"
     "goverlay"
+    "wine"
 )
 
 install_packages_batch "dnf" "${GAMING_PACKAGES[@]}"
 
-if command -v gamemoded >/dev/null; then
-    print_info "GameMode installed. You can manually enable the service later if needed."
-fi
+sudo systemctl enable --now gamemoded 2>/dev/null || true
 
 # Copy MangoHud configuration
 if rpm -q mangohud >/dev/null 2>&1 || command -v mangohud >/dev/null; then

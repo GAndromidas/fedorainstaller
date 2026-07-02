@@ -40,9 +40,7 @@ if [ -f "$SCRIPT_DIR/../configs/.zshrc" ]; then
 fi
 
 # --- Starship ---
-if ! command -v starship >/dev/null; then
-  curl -sS https://starship.rs/install.sh | sh -s -- -y
-fi
+install_packages_batch "dnf" "starship"
 mkdir -p "$HOME/.config"
 if [ -f "$SCRIPT_DIR/../configs/starship.toml" ]; then
   cp "$SCRIPT_DIR/../configs/starship.toml" "$HOME/.config/starship.toml"
@@ -59,9 +57,11 @@ fi
 
 # --- Nerd Fonts ---
 print_info "Installing Nerd Fonts..."
+install_packages_batch "dnf" "wget" "unzip"
 FONT_DIR="/usr/share/fonts/nerd-fonts"
 sudo mkdir -p "$FONT_DIR"
 LATEST_VERSION=$(curl -s https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest | grep 'tag_name' | cut -d '"' -f4)
+[ -z "$LATEST_VERSION" ] && LATEST_VERSION="v3.3.0"
 for font in JetBrainsMono Hack; do
   wget -qO "/tmp/$font.zip" "https://github.com/ryanoasis/nerd-fonts/releases/download/${LATEST_VERSION}/${font}.zip"
   sudo unzip -o "/tmp/$font.zip" -d "$FONT_DIR"

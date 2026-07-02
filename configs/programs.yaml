@@ -25,7 +25,7 @@ dnf:
       description: "Hardware information tool"
     - name: "inxi"
       description: "System information script"
-    - name: "python3-speedtest-cli"
+    - name: "speedtest-cli"
       description: "Command line speedtest tool"
     - name: "sl"
       description: "Steam locomotive animation"
@@ -35,8 +35,10 @@ dnf:
       description: "Smarter cd command"
     - name: "unzip"
       description: "Extractor for .zip archives"
-    - name: "wakeonlan"
-      description: "Wake-on-LAN utility"
+    - name: "ethtool"
+      description: "Wake-on-LAN utility (ethtool)"
+    - name: "timeshift"
+      description: "System restore tool for Btrfs snapshots"
   minimal:
     - name: "android-tools"
       description: "Android development and debugging tools"
@@ -60,7 +62,7 @@ dnf:
       description: "Hardware information tool"
     - name: "inxi"
       description: "System information script"
-    - name: "python3-speedtest-cli"
+    - name: "speedtest-cli"
       description: "Command line speedtest tool"
     - name: "sl"
       description: "Steam locomotive animation"
@@ -70,8 +72,10 @@ dnf:
       description: "Smarter cd command"
     - name: "unzip"
       description: "Extractor for .zip archives"
-    - name: "wakeonlan"
-      description: "Wake-on-LAN utility"
+    - name: "ethtool"
+      description: "Wake-on-LAN utility (ethtool)"
+    - name: "timeshift"
+      description: "System restore tool for Btrfs snapshots"
   server:
     - name: "bat"
       description: "Enhanced cat command with syntax highlighting"
@@ -103,8 +107,10 @@ dnf:
       description: "Network configuration tools"
     - name: "nmap"
       description: "Network discovery and security auditing"
-    - name: "noto-fonts-extra"
-      description: "Additional Noto fonts"
+    - name: "google-noto-sans-fonts"
+      description: "Google Noto Sans fonts"
+    - name: "google-noto-serif-fonts"
+      description: "Google Noto Serif fonts"
     - name: "samba"
       description: "SMB/CIFS file and print server"
     - name: "sl"
@@ -115,8 +121,8 @@ dnf:
       description: "FUSE-based SSH filesystem"
     - name: "unrar"
       description: "RAR archive extractor"
-    - name: "wakeonlan"
-      description: "Wake-on-LAN utility"
+    - name: "ethtool"
+      description: "Wake-on-LAN utility (ethtool)"
 flatpak:
   default:
     - name: "com.rustdesk.RustDesk"
@@ -168,6 +174,8 @@ desktop_environments:
     install:
       - name: "kvantum"
         description: "SVG-based theme engine for Qt5"
+      - name: "kdeconnect-kde"
+        description: "KDE Connect phone integration"
       - name: "qbittorrent"
         description: "BitTorrent client"
       - name: "haruna"
@@ -182,10 +190,8 @@ desktop_environments:
         description: "KDE photo management application"
       - name: "dragon"
         description: "KDE video player"
-      - name: "elisa-player"
+      - name: "elisa"
         description: "KDE music player"
-      - name: "gnome-cd-master"
-        description: "GNOME CD mastering tool"
       - name: "htop"
         description: "Process viewer"
       - name: "k3b"
@@ -230,8 +236,6 @@ desktop_environments:
         description: "KDE Sieve editor"
       - name: "qrca"
         description: "QR code generator"
-      - name: "showfoto"
-        description: "KDE photo viewer"
       - name: "skanpage"
         description: "KDE scanning utility"
   cosmic:
@@ -248,6 +252,4 @@ desktop_environments:
     remove: []
 
 # COPR repositories to enable
-copr:
-  - repo: "alternateved/eza"
-    description: "eza - Modern replacement for ls"
+copr: []

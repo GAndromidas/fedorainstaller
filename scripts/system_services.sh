@@ -28,14 +28,12 @@ configure_firewall() {
     sudo firewall-cmd --permanent --add-service=ssh >/dev/null 2>&1
     sudo firewall-cmd --permanent --add-service=cockpit >/dev/null 2>&1
     
-    # Configure KDE Connect ports if KDE is detected
-    if [ "$XDG_CURRENT_DESKTOP" ] && [[ "${XDG_CURRENT_DESKTOP,,}" == *kde* ]]; then
-        if rpm -q kdeconnect-kde &>/dev/null || rpm -q kdeconnect &>/dev/null; then
-            ui_info "Configuring KDE Connect firewall ports..."
-            sudo firewall-cmd --permanent --add-port=1714-1764/udp >/dev/null 2>&1
-            sudo firewall-cmd --permanent --add-port=1714-1764/tcp >/dev/null 2>&1
-            ui_success "KDE Connect ports configured"
-        fi
+    # Configure KDE Connect ports if packages are installed
+    if rpm -q kdeconnect-kde &>/dev/null || rpm -q kdeconnect &>/dev/null; then
+        ui_info "Configuring KDE Connect firewall ports..."
+        sudo firewall-cmd --permanent --add-port=1714-1764/udp >/dev/null 2>&1
+        sudo firewall-cmd --permanent --add-port=1714-1764/tcp >/dev/null 2>&1
+        ui_success "KDE Connect ports configured"
     fi
     
     sudo firewall-cmd --reload >/dev/null 2>&1
@@ -112,7 +110,7 @@ enable_essential_services() {
     
     # Cronie
     if rpm -q cronie &>/dev/null; then
-        services+=("cronie")
+        services+=("crond")
     fi
     
     # fstrim timer for SSDs
@@ -120,11 +118,9 @@ enable_essential_services() {
         services+=("fstrim.timer")
     fi
     
-    # KDE Connect if KDE is detected
-    if [ "$XDG_CURRENT_DESKTOP" ] && [[ "${XDG_CURRENT_DESKTOP,,}" == *kde* ]]; then
-        if rpm -q kdeconnect-kde &>/dev/null || rpm -q kdeconnect &>/dev/null; then
-            services+=("kdeconnectd")
-        fi
+    # KDE Connect if installed
+    if rpm -q kdeconnect-kde &>/dev/null || rpm -q kdeconnect &>/dev/null; then
+        services+=("kdeconnectd")
     fi
     
     # Enable services
@@ -230,34 +226,6 @@ apply_ram_based_tuning() {
     ui_success "RAM-based tuning applied"
 }
 
-enable_timeshift_autosnap() {
-    step "Configuring Timeshift autosnap (optional)"
-    
-    if ! rpm -q timeshift &>/dev/null; then
-        ui_info "Timeshift not installed, skipping autosnap configuration"
-        return 0
-    fi
-    
-    # Check if user wants to enable autosnap
-    if [ -n "${DASHBOARD_ACTIVE:-}" ]; then
-        ui_info "Dashboard mode active, skipping Timeshift autosnap prompt"
-    elif gum_confirm "Enable Timeshift autosnap for system snapshots?"; then
-        ui_info "Enabling Timeshift autosnap..."
-        
-        # Create timeshift-autosnap config if it doesn't exist
-        if ! rpm -q timeshift-autosnap &>/dev/null; then
-            # timeshift-autosnap may not be available in Fedora repos
-            ui_warn "timeshift-autosnap package not found, skipping"
-            return 0
-        fi
-        
-        sudo systemctl enable --now timeshift-autosnap.timer >/dev/null 2>&1
-        ui_success "Timeshift autosnap enabled"
-    else
-        ui_info "Timeshift autosnap skipped"
-    fi
-}
-
 # Main execution
 main() {
     echo -e "${CYAN}=== System Services Configuration ===${RESET}"
@@ -269,7 +237,6 @@ main() {
     apply_laptop_optimizations
     configure_gpu_drivers
     apply_ram_based_tuning
-    enable_timeshift_autosnap
     
     echo -e "${GREEN}=== System Services Configuration Complete ===${RESET}"
 }

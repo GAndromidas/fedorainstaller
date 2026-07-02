@@ -52,9 +52,14 @@ print_success "Flathub repository added."
 
 # --- Install GStreamer codecs ---
 print_info "Installing multimedia codecs..."
-if command -v dnf >/dev/null 2>&1; then
-  sudo dnf groupupdate -y multimedia --setop="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin
-  sudo dnf groupupdate -y sound-and-video
+if command -v "$DNF_CMD" >/dev/null 2>&1; then
+  if $DNF_CMD --version 2>&1 | grep -q "5\."; then
+    sudo $DNF_CMD group install -y multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin
+    sudo $DNF_CMD group install -y sound-and-video
+  else
+    sudo $DNF_CMD groupupdate -y multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin
+    sudo $DNF_CMD groupupdate -y sound-and-video
+  fi
 fi
 install_packages_batch "dnf" \
   "gstreamer1-plugins-good" "gstreamer1-plugins-base" \
@@ -66,7 +71,7 @@ sudo $DNF_CMD upgrade --refresh -y
 
 # --- CPU Microcode ---
 local cpu_vendor=$(detect_cpu_vendor)
-if [ -n "$cpu_vendor" ]; then
+if [ "$cpu_vendor" = "intel" ]; then
   install_packages_batch "dnf" "microcode_ctl"
 fi
 
