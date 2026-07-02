@@ -7,8 +7,6 @@ dnf:
       description: "Android development and debugging tools"
     - name: "bat"
       description: "Enhanced cat command with syntax highlighting"
-    - name: "bleachbit"
-      description: "System cleaner and privacy tool"
     - name: "btop"
       description: "Resource monitor and process viewer"
     - name: "cmatrix"
@@ -19,7 +17,7 @@ dnf:
       description: "Neofetch alternative for system info"
     - name: "filezilla"
       description: "FTP client for file transfers"
-    - name: firefox
+    - name: "firefox"
       description: "Web browser"
     - name: "fzf"
       description: "Command-line fuzzy finder"
@@ -50,7 +48,7 @@ dnf:
       description: "Modern replacement for 'ls'"
     - name: "fastfetch"
       description: "Neofetch alternative for system info"
-    - name: firefox
+    - name: "firefox"
       description: "Web browser"
     - name: "fzf"
       description: "Command-line fuzzy finder"
@@ -139,8 +137,6 @@ dnf:
 
 flatpak:
   default:
-    - name: "com.stremio.Stremio"
-      description: "Stremio - Discover, organize, and stream video content from all sources in one place (Flathub)"
     - name: "com.rustdesk.RustDesk"
       description: "RustDesk - Open source remote desktop software (Flathub)"
   minimal:
@@ -149,8 +145,6 @@ flatpak:
   server:
     []
   custom:
-    - name: "com.stremio.Stremio"
-      description: "Stremio - Discover, organize, and stream video content from all sources in one place (Flathub)"
     - name: "com.rustdesk.RustDesk"
       description: "RustDesk - Open source remote desktop software (Flathub)"
 
@@ -197,7 +191,7 @@ desktop_environments:
         description: "SVG-based theme engine for Qt5"
       - name: "qbittorrent"
         description: "BitTorrent client"
-      - name: "smplayer"
+      - name: "haruna"
         description: "KDE video player"
     flatpak:
       - name: "it.mijorus.gearlever"

@@ -1,22 +1,34 @@
-# If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
+# =============================================================================
+# ZSH Configuration
+# =============================================================================
 
-# Path to your oh-my-zsh installation.
+# Path to your oh-my-zsh installation
 export ZSH="$HOME/.oh-my-zsh"
+
+# Add local bin to PATH if it exists
+[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 
 # Themes
 ZSH_THEME="agnoster"
 DEFAULT_USER=$USER
 
 # Oh-My-ZSH Auto Update
-zstyle ':omz:update' mode auto      # update automatically without asking
+zstyle ':omz:update' mode auto      # Update automatically without asking
 
 # Plugins
-plugins=(git fzf zsh-autosuggestions zsh-syntax-highlighting)
+# git: Git integration with aliases and prompt info
+# fzf: Fuzzy finder for commands (Ctrl+R), files (Ctrl+T), and directories (Alt+C)
+plugins=(git fzf)
 
 source $ZSH/oh-my-zsh.sh
 
+# Manually source additional plugins
+source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# =============================================================================
 # FZF Configuration - Compact list with colors
+# =============================================================================
 
 # Set FZF default options to inherit terminal colors
 export FZF_DEFAULT_OPTS="
@@ -48,11 +60,13 @@ export FZF_CTRL_R_OPTS="
   --preview-window=down:3:wrap
 "
 
+# =============================================================================
 # Aliases
+# =============================================================================
 
 # System maintenance aliases
 alias sync='sudo dnf update --refresh'
-alias update='sudo dnf update && sudo dnf upgrade && sudo flatpak update'
+alias update='sudo dnf update && sudo dnf upgrade && flatpak update'
 alias clean='sudo dnf -y autoremove && sudo dnf clean all && sudo flatpak uninstall --unused'
 alias cache='rm -rf ~/.cache/*'
 alias microcode='grep . /sys/devices/system/cpu/vulnerabilities/*'
@@ -100,7 +114,56 @@ alias unzip='unzip'
 alias zshconfig="nano ~/.zshrc"
 alias update-grub='sudo grub2-mkconfig -o /boot/grub2/grub.cfg'
 
-# Load additional tools
-fastfetch
+# =============================================================================
+# Tool Initialization
+# =============================================================================
+
+# Zoxide - Smart cd replacement (use 'z dirname' to jump to frequently used directories)
 eval "$(zoxide init zsh)"
+alias cd='z'  # Replace cd with zoxide for smart directory jumping
+
+# Starship - Modern prompt with git integration
 eval "$(starship init zsh)"
+
+# Fastfetch - Display system information on shell start
+fastfetch
+
+# =============================================================================
+# Additional Functions
+# =============================================================================
+
+# Extract any archive type
+extract() {
+  if [ -f "$1" ]; then
+    case "$1" in
+      *.tar.bz2)   tar xjf "$1"     ;;
+      *.tar.gz)    tar xzf "$1"     ;;
+      *.bz2)       bunzip2 "$1"     ;;
+      *.rar)       unrar x "$1"     ;;
+      *.gz)        gunzip "$1"      ;;
+      *.tar)       tar xf "$1"      ;;
+      *.tbz2)      tar xjf "$1"     ;;
+      *.tgz)       tar xzf "$1"     ;;
+      *.zip)       unzip "$1"       ;;
+      *.Z)         uncompress "$1"  ;;
+      *.7z)        7z x "$1"        ;;
+      *)           echo "'$1' cannot be extracted via extract()" ;;
+    esac
+  else
+    echo "'$1' is not a valid file"
+  fi
+}
+
+# Create directory and cd into it
+mkcd() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# Find and kill process by name
+killp() {
+  ps aux | grep -i "$1" | grep -v grep | awk '{print $2}' | xargs sudo kill -9
+}
+
+# =============================================================================
+# End of Configuration
+# =============================================================================

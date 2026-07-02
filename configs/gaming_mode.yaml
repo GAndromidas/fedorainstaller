@@ -1,21 +1,18 @@
 # Gaming Mode packages for Fedorainstaller
-# Adapted from archinstaller for Fedora-based distributions
 
 # DNF packages for gaming setup
 dnf:
   packages:
-    - name: "discord"
-      description: "Voice and text chat for gamers"
     - name: "gamemode"
       description: "GameMode daemon for performance optimization"
+    - name: "goverlay"
+      description: "Gaming overlay for performance monitoring"
     - name: "mangohud"
       description: "Vulkan/OpenGL overlay for monitoring FPS and more"
     - name: "steam"
       description: "Digital distribution platform for games"
     - name: "wine"
       description: "Compatibility layer for running Windows applications"
-    - name: "winetricks"
-      description: "Tool to download and install various redistributable runtime libraries"
 
 # Flatpak applications for gaming
 flatpak:
