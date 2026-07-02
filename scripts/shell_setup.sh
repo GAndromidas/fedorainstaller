@@ -15,18 +15,8 @@ if [ ! -d "$HOME/.oh-my-zsh" ]; then
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 fi
 
-# --- ZSH Plugins ---
-ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
-declare -A plugins=(
-  [zsh-autosuggestions]="https://github.com/zsh-users/zsh-autosuggestions"
-  [zsh-syntax-highlighting]="https://github.com/zsh-users/zsh-syntax-highlighting.git"
-)
-for plugin in "${!plugins[@]}"; do
-  plugin_dir="$ZSH_CUSTOM/plugins/$plugin"
-  if [ ! -d "$plugin_dir" ]; then
-    git clone "${plugins[$plugin]}" "$plugin_dir"
-  fi
-done
+# --- ZSH Plugins (via DNF for system-wide install) ---
+install_packages_batch "dnf" "zsh-autosuggestions" "zsh-syntax-highlighting"
 
 # --- Change default shell ---
 if [ "$SHELL" != "$(which zsh)" ]; then
@@ -36,7 +26,6 @@ fi
 # --- .zshrc ---
 if [ -f "$SCRIPT_DIR/../configs/.zshrc" ]; then
   cp "$SCRIPT_DIR/../configs/.zshrc" "$HOME/"
-  sed -i '/^plugins=/c\plugins=(git zsh-autosuggestions zsh-syntax-highlighting)' "$HOME/.zshrc"
 fi
 
 # --- Starship ---
