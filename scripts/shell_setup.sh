@@ -29,7 +29,10 @@ if [ -f "$SCRIPT_DIR/../configs/.zshrc" ]; then
 fi
 
 # --- Starship ---
-install_packages_batch "dnf" "starship"
+if ! command -v starship >/dev/null; then
+  print_info "Installing Starship prompt..."
+  sh -c "$(curl -fsSL https://starship.rs/install.sh)" "" -y
+fi
 mkdir -p "$HOME/.config"
 if [ -f "$SCRIPT_DIR/../configs/starship.toml" ]; then
   cp "$SCRIPT_DIR/../configs/starship.toml" "$HOME/.config/starship.toml"
