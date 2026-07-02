@@ -37,7 +37,6 @@ GAMING_PACKAGES=(
     "gamemode"
     "steam"
     "goverlay"
-    "wine"
 )
 
 install_packages_batch "dnf" "${GAMING_PACKAGES[@]}"
