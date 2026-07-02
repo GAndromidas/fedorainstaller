@@ -10,18 +10,20 @@ if [ -t 1 ]; then
     RED='\033[0;31m'
     GREEN='\033[0;32m'
     YELLOW='\033[1;33m'
-    CYAN='\033[0;36m'
-    BLUE='\033[0;34m'
+    BLUE='\033[1;34m'
+    CYAN='\033[1;34m'
     MAGENTA='\033[0;35m'
+    WHITE='\033[0;37m'
     BOLD='\033[1m'
     RESET='\033[0m'
 else
     RED=''
     GREEN=''
     YELLOW=''
-    CYAN=''
     BLUE=''
+    CYAN=''
     MAGENTA=''
+    WHITE=''
     BOLD=''
     RESET=''
 fi
@@ -43,13 +45,12 @@ STEP_START_TIME=0           # Start time of current step
 INSTALLATION_START_TIME=0   # Overall installation start time
 
 # UI/Flow configuration
-TOTAL_STEPS=11
+TOTAL_STEPS=13
 : "${VERBOSE:=false}"   # Can be overridden/exported by caller
 : "${DRY_RUN:=false}"
 
 # Distribution detection
 DNF_CMD=$(command -v dnf5 || command -v dnf)
-LOGFILE="$HOME/.fedorainstaller/install.log"
 STATE_FILE="$HOME/.fedorainstaller.state"
 INSTALL_LOG="$HOME/.fedorainstaller.log"
 
@@ -67,8 +68,15 @@ fi
 
 # Ensure critical variables are defined
 : "${HOME:=/home/$USER}"
-: "${USER:==$(whoami)}"
+: "${USER:=$(whoami)}"
 : "${XDG_CURRENT_DESKTOP:=}"
+
+# Source library modules (provides ui_*, system detection, package mgmt, dashboard)
+__COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for __lib_module in core ui system package config dashboard; do
+    source "$__COMMON_DIR/lib/$__lib_module.sh"
+done
+unset __lib_module __COMMON_DIR
 
 # ===== Logging Functions =====
 
@@ -88,19 +96,19 @@ log_to_file() {
 # ============================================================================
 
 log()    { echo -e "$1" | tee -a "$INSTALL_LOG"; }
-print_info()    { echo -e "\n${CYAN}[INFO] $1${RESET}" | tee -a "$INSTALL_LOG"; }
+print_info()    { echo -e "\n${BLUE}[INFO] $1${RESET}" | tee -a "$INSTALL_LOG"; }
 print_success() { echo -e "\n${GREEN}[SUCCESS] $1${RESET}" | tee -a "$INSTALL_LOG"; }
 print_warning() { echo -e "\n${YELLOW}[WARNING] $1${RESET}" | tee -a "$INSTALL_LOG"; }
 print_error()   { echo -e "\n${RED}[ERROR] $1${RESET}" | tee -a "$INSTALL_LOG"; ERRORS+=("$1"); }
 step()   { 
     local msg="$1"
-    echo -e "\n${CYAN}[$CURRENT_STEP/$TOTAL_STEPS] $msg${RESET}" | tee -a "$INSTALL_LOG"
-    ((CURRENT_STEP++))
+    echo -e "\n${BLUE}[$CURRENT_STEP/$TOTAL_STEPS] $msg${RESET}" | tee -a "$INSTALL_LOG"
     log_to_file "Step $CURRENT_STEP: $msg"
+    ((CURRENT_STEP++))
 }
 
 # UI functions with gum integration and fallback
-ui_info() { echo -e "${CYAN}$1${RESET}" | tee -a "$INSTALL_LOG"; }
+ui_info() { echo -e "${BLUE}$1${RESET}" | tee -a "$INSTALL_LOG"; }
 ui_success() { echo -e "${GREEN}$1${RESET}" | tee -a "$INSTALL_LOG"; }
 ui_warn() { echo -e "${YELLOW}$1${RESET}" | tee -a "$INSTALL_LOG"; }
 ui_error() { echo -e "${RED}$1${RESET}" | tee -a "$INSTALL_LOG"; }
@@ -198,11 +206,11 @@ validate_install_mode() {
     local mode="$1"
 
     case "$mode" in
-        "default"|"minimal"|"server"|"custom")
+        "default"|"minimal"|"server")
             return 0
             ;;
         *)
-            log_error "Invalid INSTALL_MODE: '$mode'. Valid modes are: default, minimal, server, custom"
+            log_error "Invalid INSTALL_MODE: '$mode'. Valid modes are: default, minimal, server"
             return 1
             ;;
     esac
@@ -226,7 +234,6 @@ show_gum_menu() {
         "Standard - Complete setup with all packages (intermediate users)" \
         "Minimal - Essential tools only (recommended for new users)" \
         "Server - Headless server setup (Docker, SSH, etc.)" \
-        "Custom - Interactive selection (choose what to install) (advanced users)" \
         "Exit - Cancel installation")
 
     case "$choice" in
@@ -252,15 +259,6 @@ show_gum_menu() {
             INSTALL_MODE="server"
             if validate_install_mode "$INSTALL_MODE"; then
                 echo "Installation Mode: Server - Headless server setup"
-            else
-                log_error "Failed to validate installation mode"
-                exit 1
-            fi
-            ;;
-        "Custom"*)
-            INSTALL_MODE="custom"
-            if validate_install_mode "$INSTALL_MODE"; then
-                echo "Installation Mode: Custom - Interactive selection (choose what to install) (advanced users)"
             else
                 log_error "Failed to validate installation mode"
                 exit 1
@@ -292,12 +290,11 @@ show_traditional_menu() {
     printf "  1) Standard%-12s - Complete setup with all packages (intermediate users)\n" ""
     printf "  2) Minimal%-13s - Essential tools only (recommended for new users)\n" ""
     printf "  3) Server%-13s - Headless server setup (Docker, SSH, etc.)\n" ""
-    printf "  4) Custom%-14s - Interactive selection (choose what to install) (advanced users)\n" ""
-    printf "  5) Exit%-16s - Cancel installation\n" ""
+    printf "  4) Exit%-16s - Cancel installation\n" ""
     echo ""
 
     while true; do
-        read -r -p "$(echo -e "${CYAN}Enter your choice [1-5]: ${RESET}")" menu_choice
+        read -r -p "$(echo -e "${CYAN}Enter your choice [1-4]: ${RESET}")" menu_choice
         case "$menu_choice" in
             1)
                 INSTALL_MODE="default"
@@ -330,21 +327,11 @@ show_traditional_menu() {
                 fi
                 ;;
             4)
-                INSTALL_MODE="custom"
-                if validate_install_mode "$INSTALL_MODE"; then
-                    echo "Installation Mode: Custom - Interactive selection (choose what to install) (advanced users)"
-                    break
-                else
-                    log_error "Failed to validate installation mode"
-                    exit 1
-                fi
-                ;;
-            5)
                 echo -e "\n${YELLOW}Installation cancelled. You can run this script again anytime.${RESET}"
                 exit 0
                 ;;
             *)
-                echo -e "\n${RED}Invalid choice! Please enter 1, 2, 3, 4, or 5.${RESET}\n"
+                echo -e "\n${RED}Invalid choice! Please enter 1, 2, 3, or 4.${RESET}\n"
                 ;;
         esac
     done
@@ -615,20 +602,6 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Check if system is a laptop (for skipping peripheral detection)
-is_laptop() {
-    # Check for common laptop indicators
-    if [[ -d /sys/class/dmi/id ]] && grep -q -i "laptop\|notebook\|portable\|mobile" /sys/class/dmi/id/chassis_type 2>/dev/null; then
-        return 0
-    elif [[ -d /sys/class/dmi/id ]] && grep -q -i "laptop\|notebook\|portable" /sys/class/dmi/id/product_name 2>/dev/null; then
-        return 0
-    elif command -v laptop-detect >/dev/null 2>&1 && laptop-detect >/dev/null 2>&1; then
-        return 0
-    else
-        return 1
-    fi
-}
-
 # Check if system uses UKI (Unified Kernel Image)
 is_uki_system() {
     # Method 1: Check for UKI files in /boot/efi/EFI/Linux/
@@ -769,14 +742,6 @@ is_laptop() {
         esac
     fi
     
-    return 1
-}
-
-# Detect if system is headless (no display)
-is_headless() {
-    if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
-        return 0
-    fi
     return 1
 }
 
@@ -996,25 +961,6 @@ install_packages_batch() {
     return $?
 }
 
-# Legacy wrapper for backward compatibility
-install_packages_quietly() {
-    install_package_generic "dnf" "$@"
-}
-
-# Legacy wrapper for backward compatibility
-install_flatpak_app() {
-    local app="$1"
-    local timeout_seconds="${2:-600}"
-    
-    if [ "${DRY_RUN:-false}" = true ]; then
-        ui_info "Dry-run: Would install Flatpak app $app"
-        INSTALLED_PACKAGES+=("$app (Flatpak)")
-        return 0
-    fi
-    
-    flatpak_install_single "$app" true "$timeout_seconds"
-}
-
 # ============================================================================
 # SECTION 8: STEP EXECUTION & LOGGING
 # ============================================================================
@@ -1139,19 +1085,14 @@ mark_step_complete_with_progress() {
     fi
 }
 
-# Check if step was completed
+# Check if step was completed (checks for "COMPLETED: stepname" format)
 is_step_complete() {
-    [ -f "$STATE_FILE" ] && grep -q "^$1$" "$STATE_FILE"
+    [ -f "$STATE_FILE" ] && grep -q "^COMPLETED: $1$" "$STATE_FILE"
 }
 
-# Check if step was completed (with progress tracking format)
+# Check if step was completed (alias for is_step_complete)
 is_step_completed() {
-    local step="$1"
-    if [ -f "$STATE_FILE" ]; then
-        grep -q "COMPLETED: $step" "$STATE_FILE" 2>/dev/null
-        return $?
-    fi
-    return 1
+    is_step_complete "$1"
 }
 
 # Get step status
@@ -1160,27 +1101,6 @@ get_step_status() {
     
     if [ -f "$STATE_FILE" ]; then
         grep "^COMPLETED: $step" "$STATE_FILE" 2>/dev/null | cut -d' ' -f2
-    fi
-}
-
-# Legacy state functions (for backward compatibility)
-save_state() {
-    local step="$1"
-    local status="$2"
-    
-    # Use atomic write for reliability
-    mark_step_complete_with_progress "$step" "$status"
-}
-
-load_state() {
-    if [ -f "$STATE_FILE" ]; then
-        # Parse state file and set variables
-        while IFS= read -r line; do
-            if [[ "$line" =~ ^COMPLETED:\ (.+)$ ]]; then
-                local step="${BASH_REMATCH[1]}"
-                eval "${step//-/_}_completed=true"
-            fi
-        done < "$STATE_FILE"
     fi
 }
 
@@ -1287,13 +1207,13 @@ print_summary() {
     fi
 }
 
-# Delete installer folder
-delete_fedorainstaller_folder() {
-    if [ -d "$HOME/.fedorainstaller" ]; then
-        print_info "Cleaning up installer files..."
-        rm -rf "$HOME/.fedorainstaller"
-        print_success "Installer files cleaned up."
-    fi
+# Delete installer files
+delete_fedorainstaller_files() {
+    print_info "Cleaning up installer files..."
+    [ -d "$HOME/.fedorainstaller" ] && rm -rf "$HOME/.fedorainstaller"
+    [ -f "$INSTALL_LOG" ] && rm -f "$INSTALL_LOG"
+    [ -f "$STATE_FILE" ] && rm -f "$STATE_FILE"
+    print_success "Installer files cleaned up."
 }
 
 # Prompt for reboot
@@ -1314,30 +1234,33 @@ prompt_reboot() {
         
         echo -e "${CYAN}Installation completed successfully!${RESET}"
         echo -e "${YELLOW}It's strongly recommended to reboot your system now.\n${RESET}"
-        
-        while true; do
-            read -r -p "$(echo -e "${YELLOW}Reboot now? [Y/n]: ${RESET}")" reboot_ans
+
+        if supports_gum; then
+            if gum confirm "Reboot now?" --default=true; then
+                reboot_now=true
+            else
+                reboot_now=false
+            fi
+        else
+            echo -n -e "${YELLOW}Reboot now? [Y/n]: ${RESET}"
+            read -r reboot_ans
             reboot_ans=${reboot_ans,,}
             case "$reboot_ans" in
-                ""|y|yes)
-                    echo -e "\n${CYAN}Rebooting...${RESET}\n"
-                    delete_fedorainstaller_folder
-                    # Silently uninstall figlet before reboot
-                    if command -v figlet >/dev/null; then
-                        sudo $DNF_CMD remove -y figlet >/dev/null 2>&1
-                    fi
-                    sudo reboot
-                    break
-                    ;;
-                n|no)
-                    echo -e "\n${YELLOW}Reboot skipped. You can reboot manually at any time using \`sudo reboot\`.${RESET}\n"
-                    break
-                    ;;
-                *)
-                    echo -e "\n${RED}Please answer Y (yes) or N (no).${RESET}\n"
-                    ;;
+                ""|y|yes) reboot_now=true ;;
+                *)        reboot_now=false ;;
             esac
-        done
+        fi
+
+        if [ "$reboot_now" = true ]; then
+            echo -e "\n${CYAN}Rebooting...${RESET}\n"
+            delete_fedorainstaller_files
+            if command -v figlet >/dev/null; then
+                sudo $DNF_CMD remove -y figlet >/dev/null 2>&1
+            fi
+            sudo reboot
+        else
+            echo -e "\n${YELLOW}Reboot skipped. You can reboot manually at any time using \`sudo reboot\`.${RESET}\n"
+        fi
         echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
     else
         echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
@@ -1422,105 +1345,88 @@ show_resume_menu() {
             done
             echo ""
             
-            if [ "$has_failures" = true ]; then
-                if gum confirm --default=true "Found failed steps. Retry failed steps first?"; then
-                    ui_info "Will retry failed steps during installation"
-                    return 0
-                elif gum confirm --default=false "Resume from last completed step?"; then
-                    ui_success "Resuming installation from last completed step..."
-                    return 0
-                else
-                    if gum confirm --default=false "Start fresh installation (this will clear previous progress)?"; then
-                        rm -f "$STATE_FILE" 2>/dev/null || true
-                        ui_info "Starting fresh installation..."
-                        return 0
-                    else
-                        ui_info "Installation cancelled by user"
-                        exit 0
-                    fi
-                fi
-            else
-                if gum confirm --default=true "Resume installation from where you left off?"; then
-                    ui_success "Resuming installation..."
-                    return 0
-                else
-                    if gum confirm --default=false "Start fresh installation (this will clear previous progress)?"; then
-                        rm -f "$STATE_FILE" 2>/dev/null || true
-                        ui_info "Starting fresh installation..."
-                        return 0
-                    else
-                        ui_info "Installation cancelled by user"
-                        exit 0
-                    fi
-                fi
-            fi
-        else
-            # Fallback for systems without gum
-            echo ""
-            for i in "${!completed_steps[@]}"; do
-                local step="${completed_steps[$i]}"
-                local status="${step_status[$i]}"
-                local display_step="${step#*: }"
-                
-                case "$status" in
-                    "completed")
-                        echo -e "${GREEN}[COMPLETED]${RESET} $display_step"
-                        ;;
-                    "failed")
-                        echo -e "${RED}[FAILED]${RESET} $display_step"
-                        ;;
-                esac
-            done
-            echo ""
-            
-            if [ "$has_failures" = true ]; then
-                echo "Found failed steps. Options:"
-                echo "1. Retry failed steps first"
-                echo "2. Resume from last completed step"
-                echo "3. Start fresh installation"
-                echo "4. Cancel"
-                echo ""
-                read -r -p "Choose an option (1-4): " choice
-                
-                case "$choice" in
-                    1)
+            if supports_gum; then
+                if [ "$has_failures" = true ]; then
+                    if gum confirm --default=true "Found failed steps. Retry failed steps first?"; then
                         ui_info "Will retry failed steps during installation"
                         return 0
-                        ;;
-                    2)
+                    elif gum confirm --default=false "Resume from last completed step?"; then
                         ui_success "Resuming installation from last completed step..."
                         return 0
-                        ;;
-                    3)
-                        rm -f "$STATE_FILE" 2>/dev/null || true
-                        ui_info "Starting fresh installation..."
-                        return 0
-                        ;;
-                    4)
-                        ui_info "Installation cancelled by user"
-                        exit 0
-                        ;;
-                    *)
-                        ui_warn "Invalid option. Resuming installation..."
-                        return 0
-                        ;;
-                esac
-            else
-                echo "Resume installation from where you left off? (y/n)"
-                read -r response
-                if [[ "$response" =~ ^[Yy]$ ]]; then
-                    ui_success "Resuming installation..."
-                    return 0
+                    else
+                        if gum confirm --default=false "Start fresh installation (this will clear previous progress)?"; then
+                            rm -f "$STATE_FILE" 2>/dev/null || true
+                            ui_info "Starting fresh installation..."
+                            return 0
+                        else
+                            ui_info "Installation cancelled by user"
+                            exit 0
+                        fi
+                    fi
                 else
-                    echo "Start fresh installation? (y/n)"
-                    read -r fresh_response
-                    if [[ "$fresh_response" =~ ^[Yy]$ ]]; then
-                        rm -f "$STATE_FILE" 2>/dev/null || true
-                        ui_info "Starting fresh installation..."
+                    if gum confirm --default=true "Resume installation from where you left off?"; then
+                        ui_success "Resuming installation..."
                         return 0
                     else
-                        ui_info "Installation cancelled by user"
-                        exit 0
+                        if gum confirm --default=false "Start fresh installation (this will clear previous progress)?"; then
+                            rm -f "$STATE_FILE" 2>/dev/null || true
+                            ui_info "Starting fresh installation..."
+                            return 0
+                        else
+                            ui_info "Installation cancelled by user"
+                            exit 0
+                        fi
+                    fi
+                fi
+            else
+                if [ "$has_failures" = true ]; then
+                    echo "Found failed steps. Options:"
+                    echo "1. Retry failed steps first"
+                    echo "2. Resume from last completed step"
+                    echo "3. Start fresh installation"
+                    echo "4. Cancel"
+                    echo ""
+                    read -r -p "Choose an option (1-4): " choice
+                    case "$choice" in
+                        1)
+                            ui_info "Will retry failed steps during installation"
+                            return 0
+                            ;;
+                        2)
+                            ui_success "Resuming installation from last completed step..."
+                            return 0
+                            ;;
+                        3)
+                            rm -f "$STATE_FILE" 2>/dev/null || true
+                            ui_info "Starting fresh installation..."
+                            return 0
+                            ;;
+                        4)
+                            ui_info "Installation cancelled by user"
+                            exit 0
+                            ;;
+                        *)
+                            ui_warn "Invalid option. Resuming installation..."
+                            return 0
+                            ;;
+                    esac
+                else
+                    echo "Resume installation from where you left off? (y/n)"
+                    read -r response
+                    if [[ "$response" =~ ^[Yy]$ ]]; then
+                        ui_success "Resuming installation..."
+                        return 0
+                    else
+                        echo "Start fresh installation? (y/n)"
+                        read -r fresh_response
+                        if [[ "$fresh_response" =~ ^[Yy]$ ]]; then
+                            rm -f "$STATE_FILE" 2>/dev/null || true
+                            ui_info "Starting fresh installation..."
+                            return 0
+                        else
+                            ui_info "Installation cancelled by user"
+                            exit 0
+                        fi
                     fi
                 fi
             fi

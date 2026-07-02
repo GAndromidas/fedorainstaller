@@ -13,7 +13,7 @@ CONFIGS_DIR="$SCRIPT_DIR/configs"
 STATE_FILE="$HOME/.fedorainstaller.state"
 mkdir -p "$(dirname "$STATE_FILE")"
 
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/scripts/common.sh"
 
 # Function to show help
 show_help() {
@@ -40,7 +40,6 @@ INSTALLATION MODES:
     Standard        Complete setup with all recommended packages (intermediate users)
     Minimal         Essential tools only for lightweight installations (new users)
     Server          Headless configuration (Docker, SSH, server utilities)
-    Custom          Interactive selection of packages to install (advanced users)
 
 FEATURES:
     - Hardware-aware CPU detection (Intel/AMD with microcode updates)
@@ -79,7 +78,7 @@ EXAMPLES:
     ./install.sh --help         Show this help message
 
 LOG FILES:
-    Installation log: ~/.fedorainstaller
+    Installation log: ~/.fedorainstaller.log
     Progress tracking: ~/.fedorainstaller.state
 
 MORE INFO:
@@ -89,22 +88,7 @@ EOF
   exit 0
 }
 
-# Fedora ASCII ART
-fedora_ascii() {
-  echo -e "${CYAN}"
-  cat << "EOF"
-  ______       _                 _____           _        _ _
- |  ____|     | |               |_   _|         | |      | | |
- | |__ ___  __| | ___  _ __ __ _  | |  _ __  ___| |_ __ _| | | ___ _ __
- |  __/ _ \/ _` |/ _ \| '__/ _` | | | | '_ \/ __| __/ _` | | |/ _ \ '__|
- | | |  __/ (_| | (_) | | | (_| |_| |_| | | \__ \ || (_| | | |  __/ |
- |_|  \___|\__,_|\___/|_|  \__,_|_____|_| |_|___/\__\__,_|_|_|\___|_|
-EOF
-  echo -e "${RESET}"
-}
-
 #=== Main Execution ===#
-exec > >(tee -a "$LOGFILE") 2>&1
 
 clear
 fedora_ascii
@@ -130,11 +114,6 @@ fi
   echo "=========================================="
   echo ""
 } > "$INSTALL_LOG"
-
-# Function to log to both console and file
-log_both() {
-  echo "$1" | tee -a "$INSTALL_LOG"
-}
 
 START_TIME=$(date +%s)
 export START_TIME
@@ -205,16 +184,16 @@ check_system_requirements() {
   fi
   
   # Check GPU drivers availability
-  if lspci | grep -qi vga; then
-    local gpu_vendor=$(lspci | grep -i vga | head -1 | awk '{print $1}' | cut -d: -f2)
+  local gpu_vendor=$(detect_gpu_vendor)
+  if [ -n "$gpu_vendor" ]; then
     case "$gpu_vendor" in
-      *"Intel"*)
+      intel)
         log_to_file "Intel GPU detected - mesa drivers will be configured"
         ;;
-      *"NVIDIA"*)
+      nvidia)
         log_to_file "NVIDIA GPU detected - proprietary drivers will be configured"
         ;;
-      *"AMD"*)
+      amd)
         log_to_file "AMD GPU detected - open-source drivers will be configured"
         ;;
       *)
@@ -275,22 +254,6 @@ fi
 
 export INSTALL_MODE
 
-# Function to validate state file integrity
-validate_state_file() {
-  if [ ! -f "$STATE_FILE" ]; then
-    return 0  # No file is valid
-  fi
-  
-  # Check if file is readable and not empty
-  if [ ! -r "$STATE_FILE" ] || [ ! -s "$STATE_FILE" ]; then
-    log_warning "State file is corrupted or empty. Starting fresh installation."
-    rm -f "$STATE_FILE" 2>/dev/null || true
-    return 1
-  fi
-  
-  return 0
-}
-
 # Enhanced resume functionality with partial failure handling and error recovery
 # Show resume menu if previous installation detected
 if [ -f "$STATE_FILE" ] && [ -s "$STATE_FILE" ]; then
@@ -328,24 +291,20 @@ else
   trap 'cleanup_on_error $LINENO; save_log_on_exit' EXIT INT TERM ERR
 fi
 
-# Function to check if step was completed
-is_step_complete() {
-  [ -f "$STATE_FILE" ] && grep -q "^COMPLETED: $1$" "$STATE_FILE"
-}
-
-# Installation start
-echo "Starting FedoraInstaller"
+# Installation start — enter dashboard wizard mode
+dashboard_init
 
 # Step 1: System Update and Repos
+dashboard_step "System Update and Repos" 1
 if is_step_complete "system_update_and_repos"; then
-  ui_info "Step 1 (System Update and Repos) already completed - skipping"
+  dashboard_skip
 else
-  step "System Update and Repos"
-  ui_info "Updating system and configuring repos..."
-  if source "$SCRIPTS_DIR/system_update_and_repos.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/system_update_and_repos.sh"; then
     mark_step_complete_with_progress "system_update_and_repos" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "system_update_and_repos" "failed"
+    dashboard_fail
     log_error "System update and repos configuration failed"
     if gum_confirm "System update failed. Continue with installation?" "This may cause issues with subsequent steps."; then
       ui_warn "Continuing installation despite system update failure"
@@ -357,124 +316,130 @@ else
 fi
 
 # Step 2: Terminal Customization
+dashboard_step "Terminal Customization" 2
 if is_step_complete "terminal_customization"; then
-  ui_info "Step 2 (Terminal Customization) already completed - skipping"
+  dashboard_skip
 else
-  step "Terminal Customization"
-  ui_info "Setting up terminal environment..."
-  if source "$SCRIPTS_DIR/terminal_customization.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/terminal_customization.sh"; then
     mark_step_complete_with_progress "terminal_customization" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "terminal_customization" "failed"
+    dashboard_fail
     log_error "Terminal customization failed"
     ui_warn "Terminal customization failed but continuing installation"
   fi
 fi
 
 # Step 3: Install Programs
+dashboard_step "Install Programs" 3
 if is_step_complete "install_programs"; then
-  ui_info "Step 3 (Install Programs) already completed - skipping"
+  dashboard_skip
 else
-  step "Install Programs"
-  ui_info "Installing applications..."
-  if source "$SCRIPTS_DIR/programs.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/programs.sh"; then
     mark_step_complete_with_progress "install_programs" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "install_programs" "failed"
+    dashboard_fail
     log_error "Programs installation failed"
     ui_warn "Programs installation failed but continuing installation"
   fi
 fi
 
 # Step 4: Install Nerd Fonts
+dashboard_step "Install Nerd Fonts" 4
 if is_step_complete "install_nerd_fonts"; then
-  ui_info "Step 4 (Install Nerd Fonts) already completed - skipping"
+  dashboard_skip
 else
-  step "Install Nerd Fonts"
-  ui_info "Installing nerd fonts..."
-  if source "$SCRIPTS_DIR/install_nerd_fonts.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/install_nerd_fonts.sh"; then
     mark_step_complete_with_progress "install_nerd_fonts" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "install_nerd_fonts" "failed"
+    dashboard_fail
     log_error "Nerd fonts installation failed"
     ui_warn "Nerd fonts installation failed but continuing installation"
   fi
 fi
 
 # Step 5: Enable Codecs
+dashboard_step "Enable Codecs" 5
 if is_step_complete "enable_codecs"; then
-  ui_info "Step 5 (Enable Codecs) already completed - skipping"
+  dashboard_skip
 else
-  step "Enable Codecs"
-  ui_info "Enabling multimedia codecs..."
-  if source "$SCRIPTS_DIR/enable_codecs.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/enable_codecs.sh"; then
     mark_step_complete_with_progress "enable_codecs" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "enable_codecs" "failed"
+    dashboard_fail
     log_error "Codecs installation failed"
     ui_warn "Codecs installation failed but continuing installation"
   fi
 fi
 
 # Step 6: Gaming Tweaks (skip in server mode)
+dashboard_step "Gaming Tweaks" 6
 if [[ "$INSTALL_MODE" == "server" ]]; then
-  ui_info "Server mode selected, skipping Gaming Tweaks."
+  dashboard_skip "Skipped — server mode"
+elif is_step_complete "gaming_tweaks"; then
+  dashboard_skip
 else
-  if is_step_complete "gaming_tweaks"; then
-    ui_info "Step 6 (Gaming Tweaks) already completed - skipping"
+  if dashboard_run "$SCRIPTS_DIR/gaming_tweaks.sh"; then
+    mark_step_complete_with_progress "gaming_tweaks" "completed"
+    dashboard_ok
   else
-    step "Gaming Tweaks"
-    ui_info "Applying gaming optimizations..."
-    if source "$SCRIPTS_DIR/gaming_tweaks.sh"; then
-      mark_step_complete_with_progress "gaming_tweaks" "completed"
-    else
-      mark_step_complete_with_progress "gaming_tweaks" "failed"
-      log_error "Gaming tweaks failed"
-      ui_warn "Gaming tweaks failed but continuing installation"
-    fi
+    mark_step_complete_with_progress "gaming_tweaks" "failed"
+    dashboard_fail
+    log_error "Gaming tweaks failed"
+    ui_warn "Gaming tweaks failed but continuing installation"
   fi
 fi
 
 # Step 7: Hardware Detection
+dashboard_step "Hardware Detection" 7
 if is_step_complete "hardware_detection"; then
-  ui_info "Step 7 (Hardware Detection) already completed - skipping"
+  dashboard_skip
 else
-  step "Hardware Detection"
-  ui_info "Detecting and configuring hardware..."
-  if source "$SCRIPTS_DIR/hardware_detection.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/hardware_detection.sh"; then
     mark_step_complete_with_progress "hardware_detection" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "hardware_detection" "failed"
+    dashboard_fail
     log_error "Hardware detection failed"
     ui_warn "Hardware detection failed but continuing installation"
   fi
 fi
 
 # Step 8: System Services
+dashboard_step "System Services" 8
 if is_step_complete "system_services"; then
-  ui_info "Step 8 (System Services) already completed - skipping"
+  dashboard_skip
 else
-  step "System Services"
-  ui_info "Configuring system services..."
-  if source "$SCRIPTS_DIR/system_services.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/system_services.sh"; then
     mark_step_complete_with_progress "system_services" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "system_services" "failed"
+    dashboard_fail
     log_error "System services configuration failed"
     ui_warn "System services configuration failed but continuing installation"
   fi
 fi
 
 # Step 9: Bootloader Configuration
+dashboard_step "Bootloader Configuration" 9
 if is_step_complete "bootloader_config"; then
-  ui_info "Step 9 (Bootloader Configuration) already completed - skipping"
+  dashboard_skip
 else
-  step "Bootloader Configuration"
-  ui_info "Configuring bootloader..."
-  if source "$SCRIPTS_DIR/bootloader_config.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/bootloader_config.sh"; then
     mark_step_complete_with_progress "bootloader_config" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "bootloader_config" "failed"
+    dashboard_fail
     log_error "Bootloader configuration failed"
     if gum_confirm "Bootloader configuration failed. Continue with installation?" "This may prevent your system from booting properly."; then
       ui_warn "Continuing installation despite bootloader configuration failure"
@@ -486,86 +451,87 @@ else
 fi
 
 # Step 10: Peripheral Detection (skip in minimal mode)
+dashboard_step "Peripheral Detection" 10
 if [[ "$INSTALL_MODE" == "minimal" ]]; then
-  ui_info "Minimal mode selected, skipping Peripheral Detection."
+  dashboard_skip "Skipped — minimal mode"
+elif is_step_complete "peripheral_detection"; then
+  dashboard_skip
 else
-  if is_step_complete "peripheral_detection"; then
-    ui_info "Step 10 (Peripheral Detection) already completed - skipping"
+  if dashboard_run "$SCRIPTS_DIR/peripheral_detection.sh"; then
+    mark_step_complete_with_progress "peripheral_detection" "completed"
+    dashboard_ok
   else
-    step "Peripheral Detection"
-    ui_info "Detecting peripherals..."
-    if source "$SCRIPTS_DIR/peripheral_detection.sh"; then
-      mark_step_complete_with_progress "peripheral_detection" "completed"
-    else
-      mark_step_complete_with_progress "peripheral_detection" "failed"
-      log_error "Peripheral detection failed"
-      ui_warn "Peripheral detection failed but continuing installation"
-    fi
+    mark_step_complete_with_progress "peripheral_detection" "failed"
+    dashboard_fail
+    log_error "Peripheral detection failed"
+    ui_warn "Peripheral detection failed but continuing installation"
   fi
 fi
 
 # Step 11: Wake-on-LAN Configuration (skip in minimal mode)
+dashboard_step "Wake-on-LAN Configuration" 11
 if [[ "$INSTALL_MODE" == "minimal" ]]; then
-  ui_info "Minimal mode selected, skipping Wake-on-LAN Configuration."
+  dashboard_skip "Skipped — minimal mode"
+elif is_step_complete "wakeonlan_config"; then
+  dashboard_skip
 else
-  if is_step_complete "wakeonlan_config"; then
-    ui_info "Step 11 (Wake-on-LAN Configuration) already completed - skipping"
+  if dashboard_run "$SCRIPTS_DIR/wakeonlan_config.sh"; then
+    mark_step_complete_with_progress "wakeonlan_config" "completed"
+    dashboard_ok
   else
-    step "Wake-on-LAN Configuration"
-    ui_info "Configuring Wake-on-LAN..."
-    if source "$SCRIPTS_DIR/wakeonlan_config.sh"; then
-      mark_step_complete_with_progress "wakeonlan_config" "completed"
-    else
-      mark_step_complete_with_progress "wakeonlan_config" "failed"
-      log_error "Wake-on-LAN configuration failed"
-      ui_warn "Wake-on-LAN configuration failed but continuing installation"
-    fi
+    mark_step_complete_with_progress "wakeonlan_config" "failed"
+    dashboard_fail
+    log_error "Wake-on-LAN configuration failed"
+    ui_warn "Wake-on-LAN configuration failed but continuing installation"
   fi
 fi
 
 # Step 12: Maintenance
+dashboard_step "Maintenance" 12
 if is_step_complete "maintenance"; then
-  ui_info "Step 12 (Maintenance) already completed - skipping"
+  dashboard_skip
 else
-  step "Maintenance"
-  ui_info "Running system maintenance..."
-  if source "$SCRIPTS_DIR/maintenance.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/maintenance.sh"; then
     mark_step_complete_with_progress "maintenance" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "maintenance" "failed"
+    dashboard_fail
     log_error "Maintenance failed"
     ui_warn "Maintenance failed but installation completed"
   fi
 fi
 
-# Step 14: Fail2ban Setup
+# Step 13: Fail2ban Setup
+dashboard_step "Fail2ban Setup" 13
 if is_step_complete "install_fail2ban"; then
-  ui_info "Step 14 (Fail2ban Setup) already completed - skipping"
+  dashboard_skip
 else
-  step "Fail2ban Setup"
-  ui_info "Setting up security protection..."
-  if source "$SCRIPTS_DIR/install_fail2ban.sh"; then
+  if dashboard_run "$SCRIPTS_DIR/install_fail2ban.sh"; then
     mark_step_complete_with_progress "install_fail2ban" "completed"
+    dashboard_ok
   else
     mark_step_complete_with_progress "install_fail2ban" "failed"
+    dashboard_fail
     log_error "Fail2ban setup failed"
     ui_warn "Fail2ban setup failed but continuing installation"
   fi
 fi
 
 if [ "$DRY_RUN" = true ]; then
-  echo -e "${YELLOW}This was a preview run. No changes were made to your system.${RESET}"
-  echo -e "${CYAN}To perform the actual installation, run:${RESET} ${GREEN}./install.sh${RESET}"
+  echo ""
+  ui_info "This was a preview run. No changes were made to your system."
+  ui_info "To perform the actual installation, run: ./install.sh"
   echo ""
 fi
+
+dashboard_finish
 
 log_performance "Total installation time"
 
 # Check for errors and prompt reboot
 if [ ${#ERRORS[@]} -eq 0 ]; then
-  print_summary 0
   prompt_reboot 0
 else
-  print_summary 1
   prompt_reboot 1
 fi

@@ -3,7 +3,7 @@ set -uo pipefail
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../common.sh"
+source "$SCRIPT_DIR/common.sh"
 
 # System services configuration for Fedora - adapted from archinstaller
 
@@ -239,7 +239,9 @@ enable_timeshift_autosnap() {
     fi
     
     # Check if user wants to enable autosnap
-    if gum_confirm "Enable Timeshift autosnap for system snapshots?"; then
+    if [ -n "${DASHBOARD_ACTIVE:-}" ]; then
+        ui_info "Dashboard mode active, skipping Timeshift autosnap prompt"
+    elif gum_confirm "Enable Timeshift autosnap for system snapshots?"; then
         ui_info "Enabling Timeshift autosnap..."
         
         # Create timeshift-autosnap config if it doesn't exist

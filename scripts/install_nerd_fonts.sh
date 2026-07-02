@@ -1,7 +1,7 @@
 #!/bin/bash
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../common.sh"
+source "$SCRIPT_DIR/common.sh"
 # Install Nerd Fonts for all users
 step "Install Nerd Fonts"
 print_info "Installing Nerd Fonts..."

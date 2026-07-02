@@ -1,7 +1,7 @@
 #!/bin/bash
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../common.sh"
+source "$SCRIPT_DIR/common.sh"
 # Install and configure fail2ban
 step "Install fail2ban"
 print_info "Installing fail2ban..."

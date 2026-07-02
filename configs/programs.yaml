@@ -35,15 +35,17 @@ dnf:
       description: "Smarter cd command"
     - name: "unzip"
       description: "Extractor for .zip archives"
+    - name: "wakeonlan"
+      description: "Wake-on-LAN utility"
   minimal:
     - name: "android-tools"
       description: "Android development and debugging tools"
     - name: "bat"
       description: "Enhanced cat command with syntax highlighting"
-    - name: "bleachbit"
-      description: "System cleaner and privacy tool"
     - name: "btop"
       description: "Resource monitor and process viewer"
+    - name: "cmatrix"
+      description: "Matrix-style terminal screensaver"
     - name: "eza"
       description: "Modern replacement for 'ls'"
     - name: "fastfetch"
@@ -68,6 +70,8 @@ dnf:
       description: "Smarter cd command"
     - name: "unzip"
       description: "Extractor for .zip archives"
+    - name: "wakeonlan"
+      description: "Wake-on-LAN utility"
   server:
     - name: "bat"
       description: "Enhanced cat command with syntax highlighting"
@@ -113,28 +117,6 @@ dnf:
       description: "RAR archive extractor"
     - name: "wakeonlan"
       description: "Wake-on-LAN utility"
-  custom:
-    - name: "bleachbit"
-      description: "System cleaner and privacy tool"
-    - name: "eza"
-      description: "Modern replacement for 'ls'"
-    - name: "fastfetch"
-      description: "Neofetch alternative for system info"
-    - name: "filezilla"
-      description: "FTP client for file transfers"
-    - name: "fzf"
-      description: "Command-line fuzzy finder"
-    - name: "kdenlive"
-      description: "Video editor for KDE"
-    - name: "libreoffice"
-      description: "Full-featured office suite"
-    - name: "python3-speedtest-cli"
-      description: "Command line speedtest tool"
-    - name: "unzip"
-      description: "Extractor for .zip archives"
-    - name: "zoxide"
-      description: "Smarter cd command"
-
 flatpak:
   default:
     - name: "com.rustdesk.RustDesk"
@@ -144,9 +126,6 @@ flatpak:
       description: "RustDesk - Open source remote desktop software (Flathub)"
   server:
     []
-  custom:
-    - name: "com.rustdesk.RustDesk"
-      description: "RustDesk - Open source remote desktop software (Flathub)"
 
 desktop_environments:
   gnome:

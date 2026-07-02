@@ -3,7 +3,7 @@ set -uo pipefail
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../common.sh"
+source "$SCRIPT_DIR/common.sh"
 
 # Peripheral detection for Fedora - adapted from archinstaller
 # Intelligently detects and configures peripherals like Logitech mice, Keychron keyboards
@@ -45,9 +45,6 @@ detect_logitech_devices() {
             fi
         else
             ui_warn "Failed to install Solaar"
-            fi
-        else
-            ui_info "Solaar already installed"
         fi
     else
         ui_info "No Logitech devices detected"
