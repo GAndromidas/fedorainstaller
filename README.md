@@ -1,6 +1,6 @@
 <div align="center">
 
-# Fedorainstaller
+# FedoraInstaller
 
 [![GitHub release](https://img.shields.io/github/release/GAndromidas/fedorainstaller.svg?style=for-the-badge&logo=github)](https://github.com/GAndromidas/fedorainstaller/releases)
 [![Last Commit](https://img.shields.io/github/last-commit/GAndromidas/fedorainstaller.svg?style=for-the-badge&logo=git)](https://github.com/GAndromidas/fedorainstaller/commits/main)
