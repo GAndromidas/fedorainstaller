@@ -294,111 +294,79 @@ fi
 # Installation start — enter dashboard wizard mode
 dashboard_init
 
-# Step 1: System Update and Repos
-dashboard_step "System Update and Repos" 1
-if is_step_complete "system_update_and_repos"; then
+# Step 1: System Preparation
+dashboard_step "System Preparation" 1
+if is_step_complete "system_preparation"; then
   dashboard_skip
 else
-  if dashboard_run "$SCRIPTS_DIR/system_update_and_repos.sh"; then
-    mark_step_complete_with_progress "system_update_and_repos" "completed"
+  if dashboard_run "$SCRIPTS_DIR/system_preparation.sh"; then
+    mark_step_complete_with_progress "system_preparation" "completed"
     dashboard_ok
   else
-    mark_step_complete_with_progress "system_update_and_repos" "failed"
+    mark_step_complete_with_progress "system_preparation" "failed"
     dashboard_fail
-    log_error "System update and repos configuration failed"
-    if gum_confirm "System update failed. Continue with installation?" "This may cause issues with subsequent steps."; then
-      ui_warn "Continuing installation despite system update failure"
+    log_error "System preparation failed"
+    if gum_confirm "System preparation failed. Continue with installation?" "This may cause issues with subsequent steps."; then
+      ui_warn "Continuing installation despite system preparation failure"
     else
-      ui_error "Installation stopped due to system update failure"
+      ui_error "Installation stopped due to system preparation failure"
       exit 1
     fi
   fi
 fi
 
-# Step 2: Terminal Customization
-dashboard_step "Terminal Customization" 2
-if is_step_complete "terminal_customization"; then
+# Step 2: Shell Setup
+dashboard_step "Shell Setup" 2
+if is_step_complete "shell_setup"; then
   dashboard_skip
 else
-  if dashboard_run "$SCRIPTS_DIR/terminal_customization.sh"; then
-    mark_step_complete_with_progress "terminal_customization" "completed"
+  if dashboard_run "$SCRIPTS_DIR/shell_setup.sh"; then
+    mark_step_complete_with_progress "shell_setup" "completed"
     dashboard_ok
   else
-    mark_step_complete_with_progress "terminal_customization" "failed"
+    mark_step_complete_with_progress "shell_setup" "failed"
     dashboard_fail
-    log_error "Terminal customization failed"
-    ui_warn "Terminal customization failed but continuing installation"
+    log_error "Shell setup failed"
+    ui_warn "Shell setup failed but continuing installation"
   fi
 fi
 
-# Step 3: Install Programs
-dashboard_step "Install Programs" 3
-if is_step_complete "install_programs"; then
+# Step 3: Programs
+dashboard_step "Programs" 3
+if is_step_complete "programs"; then
   dashboard_skip
 else
   if dashboard_run "$SCRIPTS_DIR/programs.sh"; then
-    mark_step_complete_with_progress "install_programs" "completed"
+    mark_step_complete_with_progress "programs" "completed"
     dashboard_ok
   else
-    mark_step_complete_with_progress "install_programs" "failed"
+    mark_step_complete_with_progress "programs" "failed"
     dashboard_fail
     log_error "Programs installation failed"
     ui_warn "Programs installation failed but continuing installation"
   fi
 fi
 
-# Step 4: Install Nerd Fonts
-dashboard_step "Install Nerd Fonts" 4
-if is_step_complete "install_nerd_fonts"; then
-  dashboard_skip
-else
-  if dashboard_run "$SCRIPTS_DIR/install_nerd_fonts.sh"; then
-    mark_step_complete_with_progress "install_nerd_fonts" "completed"
-    dashboard_ok
-  else
-    mark_step_complete_with_progress "install_nerd_fonts" "failed"
-    dashboard_fail
-    log_error "Nerd fonts installation failed"
-    ui_warn "Nerd fonts installation failed but continuing installation"
-  fi
-fi
-
-# Step 5: Enable Codecs
-dashboard_step "Enable Codecs" 5
-if is_step_complete "enable_codecs"; then
-  dashboard_skip
-else
-  if dashboard_run "$SCRIPTS_DIR/enable_codecs.sh"; then
-    mark_step_complete_with_progress "enable_codecs" "completed"
-    dashboard_ok
-  else
-    mark_step_complete_with_progress "enable_codecs" "failed"
-    dashboard_fail
-    log_error "Codecs installation failed"
-    ui_warn "Codecs installation failed but continuing installation"
-  fi
-fi
-
-# Step 6: Gaming Tweaks (skip in server mode)
-dashboard_step "Gaming Tweaks" 6
+# Step 4: Gaming Mode (skip in server mode)
+dashboard_step "Gaming Mode" 4
 if [[ "$INSTALL_MODE" == "server" ]]; then
   dashboard_skip "Skipped — server mode"
-elif is_step_complete "gaming_tweaks"; then
+elif is_step_complete "gaming_mode"; then
   dashboard_skip
 else
-  if dashboard_run "$SCRIPTS_DIR/gaming_tweaks.sh"; then
-    mark_step_complete_with_progress "gaming_tweaks" "completed"
+  if dashboard_run "$SCRIPTS_DIR/gaming_mode.sh"; then
+    mark_step_complete_with_progress "gaming_mode" "completed"
     dashboard_ok
   else
-    mark_step_complete_with_progress "gaming_tweaks" "failed"
+    mark_step_complete_with_progress "gaming_mode" "failed"
     dashboard_fail
-    log_error "Gaming tweaks failed"
-    ui_warn "Gaming tweaks failed but continuing installation"
+    log_error "Gaming mode failed"
+    ui_warn "Gaming mode failed but continuing installation"
   fi
 fi
 
-# Step 7: Hardware Detection
-dashboard_step "Hardware Detection" 7
+# Step 5: Hardware Detection
+dashboard_step "Hardware Detection" 5
 if is_step_complete "hardware_detection"; then
   dashboard_skip
 else
@@ -413,24 +381,8 @@ else
   fi
 fi
 
-# Step 8: System Services
-dashboard_step "System Services" 8
-if is_step_complete "system_services"; then
-  dashboard_skip
-else
-  if dashboard_run "$SCRIPTS_DIR/system_services.sh"; then
-    mark_step_complete_with_progress "system_services" "completed"
-    dashboard_ok
-  else
-    mark_step_complete_with_progress "system_services" "failed"
-    dashboard_fail
-    log_error "System services configuration failed"
-    ui_warn "System services configuration failed but continuing installation"
-  fi
-fi
-
-# Step 9: Bootloader Configuration
-dashboard_step "Bootloader Configuration" 9
+# Step 6: Bootloader Configuration
+dashboard_step "Bootloader Configuration" 6
 if is_step_complete "bootloader_config"; then
   dashboard_skip
 else
@@ -450,44 +402,58 @@ else
   fi
 fi
 
-# Step 10: Peripheral Detection (skip in minimal mode)
-dashboard_step "Peripheral Detection" 10
-if [[ "$INSTALL_MODE" == "minimal" ]]; then
-  dashboard_skip "Skipped — minimal mode"
-elif is_step_complete "peripheral_detection"; then
+# Step 7: System Services
+dashboard_step "System Services" 7
+if is_step_complete "system_services"; then
   dashboard_skip
 else
-  if dashboard_run "$SCRIPTS_DIR/peripheral_detection.sh"; then
-    mark_step_complete_with_progress "peripheral_detection" "completed"
+  if dashboard_run "$SCRIPTS_DIR/system_services.sh"; then
+    mark_step_complete_with_progress "system_services" "completed"
     dashboard_ok
   else
-    mark_step_complete_with_progress "peripheral_detection" "failed"
+    mark_step_complete_with_progress "system_services" "failed"
     dashboard_fail
-    log_error "Peripheral detection failed"
-    ui_warn "Peripheral detection failed but continuing installation"
+    log_error "System services configuration failed"
+    ui_warn "System services configuration failed but continuing installation"
   fi
 fi
 
-# Step 11: Wake-on-LAN Configuration (skip in minimal mode)
-dashboard_step "Wake-on-LAN Configuration" 11
+# Step 8: Peripheral Setup (skip in minimal mode)
+dashboard_step "Peripheral Setup" 8
 if [[ "$INSTALL_MODE" == "minimal" ]]; then
   dashboard_skip "Skipped — minimal mode"
-elif is_step_complete "wakeonlan_config"; then
+elif is_step_complete "peripheral_setup"; then
   dashboard_skip
 else
-  if dashboard_run "$SCRIPTS_DIR/wakeonlan_config.sh"; then
-    mark_step_complete_with_progress "wakeonlan_config" "completed"
+  if dashboard_run "$SCRIPTS_DIR/peripheral_setup.sh"; then
+    mark_step_complete_with_progress "peripheral_setup" "completed"
     dashboard_ok
   else
-    mark_step_complete_with_progress "wakeonlan_config" "failed"
+    mark_step_complete_with_progress "peripheral_setup" "failed"
     dashboard_fail
-    log_error "Wake-on-LAN configuration failed"
-    ui_warn "Wake-on-LAN configuration failed but continuing installation"
+    log_error "Peripheral setup failed"
+    ui_warn "Peripheral setup failed but continuing installation"
   fi
 fi
 
-# Step 12: Maintenance
-dashboard_step "Maintenance" 12
+# Step 9: Fail2ban
+dashboard_step "Fail2ban" 9
+if is_step_complete "fail2ban"; then
+  dashboard_skip
+else
+  if dashboard_run "$SCRIPTS_DIR/fail2ban.sh"; then
+    mark_step_complete_with_progress "fail2ban" "completed"
+    dashboard_ok
+  else
+    mark_step_complete_with_progress "fail2ban" "failed"
+    dashboard_fail
+    log_error "Fail2ban setup failed"
+    ui_warn "Fail2ban setup failed but continuing installation"
+  fi
+fi
+
+# Step 10: Maintenance
+dashboard_step "Maintenance" 10
 if is_step_complete "maintenance"; then
   dashboard_skip
 else
@@ -499,22 +465,6 @@ else
     dashboard_fail
     log_error "Maintenance failed"
     ui_warn "Maintenance failed but installation completed"
-  fi
-fi
-
-# Step 13: Fail2ban Setup
-dashboard_step "Fail2ban Setup" 13
-if is_step_complete "install_fail2ban"; then
-  dashboard_skip
-else
-  if dashboard_run "$SCRIPTS_DIR/install_fail2ban.sh"; then
-    mark_step_complete_with_progress "install_fail2ban" "completed"
-    dashboard_ok
-  else
-    mark_step_complete_with_progress "install_fail2ban" "failed"
-    dashboard_fail
-    log_error "Fail2ban setup failed"
-    ui_warn "Fail2ban setup failed but continuing installation"
   fi
 fi
 

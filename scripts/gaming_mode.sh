@@ -9,12 +9,12 @@ step "Gaming and performance tweaks"
 {
   echo -e "\n${THEME_BORDER}═══════════════════════════════════════════════════════════════${RESET}"
   echo -e "${THEME_HEADER}  GAMING & PERFORMANCE TWEAKS${RESET}"
-  echo -e "${THEME_TEXT}  Includes: MangoHud, GameMode, Steam, Lutris, Wine, and more.${RESET}"
+  echo -e "${THEME_TEXT}  Includes: MangoHud, GameMode, Steam, GOverlay, Heroic Launcher, Discord, and more.${RESET}"
   echo -e "${THEME_BORDER}═══════════════════════════════════════════════════════════════${RESET}"
 } >/dev/tty
 
 if supports_gum; then
-    if gum confirm "Install gaming and performance tweaks?" --default=true; then
+    if gum confirm "Install gaming and performance tweaks?" --default=true 2>/dev/tty; then
         :
     else
         print_info "Gaming tweaks skipped."

@@ -46,18 +46,16 @@ OPTIONS:
 
 Fedorainstaller runs a series of steps to transform a fresh Fedora system:
 
-1. **System Update & Repos** — Configures DNF, enables RPM Fusion, Flathub, installs CPU microcode and kernel headers
-2. **Terminal Customization** — Installs Zsh, Oh-My-Zsh, plugins, and Starship prompt
+1. **System Preparation** — Configures DNF, enables RPM Fusion/Flathub, installs codecs, CPU microcode, kernel headers, and runs a full system update
+2. **Shell Setup** — Installs Zsh, Oh-My-Zsh, plugins, Starship prompt, Fastfetch config, and Nerd Fonts
 3. **Programs** — Installs packages for your chosen mode (DNF + Flatpak)
-4. **Codecs** — Enables multimedia codecs via RPM Fusion, swaps ffmpeg-free for full ffmpeg
-5. **Gaming Tweaks** — Optional: Steam, MangoHud, GameMode, Heroic Launcher, Discord
-6. **Hardware Detection** — Detects CPU/GPU vendor, installs appropriate drivers
+4. **Gaming Mode** — Optional: Steam, MangoHud, GameMode, Heroic Launcher, Discord
+5. **Hardware Detection** — Detects CPU/GPU vendor, installs appropriate drivers
+6. **Bootloader Configuration** — Configures GRUB or systemd-boot
 7. **System Services** — Configures firewalld, user groups, power management, GPU drivers, RAM tuning
-8. **Bootloader** — Configures GRUB or systemd-boot
-9. **Peripheral Detection** — Detects Logitech/Keychron/Razer devices, installs management tools
-10. **Wake-on-LAN** — Configures WoL on ethernet interfaces (desktops only)
-11. **Maintenance** — Cleans up, removes unused packages
-12. **Fail2ban** — Installs and configures SSH brute-force protection
+8. **Peripheral Setup** — Detects Logitech/Keychron/Razer devices, enables Wake-on-LAN on ethernet interfaces
+9. **Fail2ban** — Installs and configures SSH brute-force protection
+10. **Maintenance** — Cleans up, removes unused packages
 
 # Help or Issues
 

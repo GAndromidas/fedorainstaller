@@ -21,7 +21,7 @@ dashboard_init() {
     DASHBOARD_STEP_ROWS=()
     DASHBOARD_ROW_OFFSET=0
 
-    local total=${TOTAL_STEPS:-14}
+    local total=${TOTAL_STEPS:-10}
     local cols
     cols=$(tput cols 2>/dev/null || echo 80)
     local w=$((cols - 4))
@@ -77,7 +77,7 @@ dashboard_init() {
 
 dashboard_step() {
     local name=$1 num=$2
-    local total=${TOTAL_STEPS:-14}
+    local total=${TOTAL_STEPS:-10}
     local w=$DASHBOARD_INNER_W
 
     DASHBOARD_CURRENT_STEP=$num
@@ -208,7 +208,7 @@ dashboard_skip() {
 dashboard_finish() {
     clear
 
-    local total=${TOTAL_STEPS:-14}
+    local total=${TOTAL_STEPS:-10}
     local success=0 fail=0 skip=0
 
     for ((i = 1; i <= total; i++)); do
