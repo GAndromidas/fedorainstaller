@@ -56,7 +56,7 @@
         {
             "type": "packages",
             "key": " ",
-            "format": "{1} (dnf), {flatpak-all} (flatpak)"
+            "format": "{rpm} (rpm), {flatpak-all} (flatpak)"
         },
         "break",
         {

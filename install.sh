@@ -449,6 +449,22 @@ else
   fi
 fi
 
+# Step 10: Wake-on-LAN (desktops only)
+dashboard_step "Wake-on-LAN Configuration" 10
+if is_step_complete "wakeonlan_config"; then
+  dashboard_skip
+else
+  if dashboard_run "$SCRIPTS_DIR/wakeonlan_config.sh"; then
+    mark_step_complete_with_progress "wakeonlan_config" "completed"
+    dashboard_ok
+  else
+    mark_step_complete_with_progress "wakeonlan_config" "failed"
+    dashboard_fail
+    log_error "Wake-on-LAN configuration failed"
+    ui_warn "Wake-on-LAN configuration failed but installation completed"
+  fi
+fi
+
 if [ "$DRY_RUN" = true ]; then
   echo ""
   ui_info "This was a preview run. No changes were made to your system."

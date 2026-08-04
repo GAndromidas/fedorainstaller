@@ -70,7 +70,7 @@ print_info "Updating system packages..."
 sudo $DNF_CMD upgrade --refresh -y
 
 # --- CPU Microcode ---
-local cpu_vendor=$(detect_cpu_vendor)
+cpu_vendor=$(detect_cpu_vendor)
 if [ "$cpu_vendor" = "intel" ]; then
   install_packages_batch "dnf" "microcode_ctl"
 fi

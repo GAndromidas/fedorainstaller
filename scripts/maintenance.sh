@@ -12,7 +12,7 @@ cleanup_and_optimize() {
     
     # Check if lsblk is available for SSD detection
     if command_exists lsblk; then
-        if lsblk -d -o rota | grep -q '^0$'; then
+        if is_ssd; then
             ui_info "SSD detected, running fstrim..."
             sudo fstrim -v / >/dev/null 2>&1
             ui_success "SSD trim completed"

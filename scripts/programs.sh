@@ -1,7 +1,7 @@
 #!/bin/bash
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../common.sh"
+source "$SCRIPT_DIR/common.sh"
 
 step "Install programs from YAML configuration"
 
@@ -28,29 +28,6 @@ if ! command -v yq &>/dev/null; then
         exit 1
     fi
 fi
-
-# Function to read packages from YAML
-read_yaml_packages() {
-    local yaml_file="$1"
-    local yaml_path="$2"
-    local array_name="$3"
-    
-    # Use yq to extract package names
-    local yq_output
-    yq_output=$(yq -r "$yaml_path[].name" "$yaml_file" 2>/dev/null)
-    
-    if [[ $? -eq 0 && -n "$yq_output" ]]; then
-        # Clear the array first
-        eval "$array_name=()"
-        
-        while IFS= read -r package; do
-            [[ -z "$package" ]] && continue
-            eval "$array_name+=(\"$package\")"
-        done <<< "$yq_output"
-    else
-        eval "$array_name=()"
-    fi
-}
 
 # Debug: Show the current mode
 print_info "Current installation mode: '$INSTALL_MODE'"
@@ -157,6 +134,75 @@ if [ ${#flatpak_packages[@]} -gt 0 ]; then
     fi
 else
     print_warning "No Flatpak packages to install for mode: $INSTALL_MODE"
+fi
+
+# Configure server applications (Docker, Portainer, Watchtower)
+configure_server_applications() {
+    print_info "Configuring server applications..."
+
+    # Configure Docker
+    if command -v docker >/dev/null; then
+        print_info "Enabling and starting Docker service..."
+        if sudo systemctl enable --now docker >/dev/null 2>&1; then
+            print_success "Docker service enabled and started."
+        else
+            print_warning "Failed to enable or start Docker service."
+        fi
+
+        print_info "Adding user to the docker group..."
+        if sudo usermod -aG docker "$USER" 2>/dev/null; then
+            print_success "User '$USER' added to the docker group. Please log out and back in to apply changes."
+        else
+            print_warning "Failed to add user to the docker group."
+        fi
+
+        # Interactively install Portainer
+        if gum_confirm "Install Portainer for Docker management?"; then
+            print_info "Creating Portainer data volume..."
+            sudo docker volume create portainer_data >/dev/null 2>&1 || true
+
+            print_info "Starting Portainer container..."
+            sudo docker stop portainer >/dev/null 2>&1 || true
+            sudo docker rm portainer >/dev/null 2>&1 || true
+
+            if sudo docker run -d -p 8000:8000 -p 9443:9443 --name=portainer --restart=always \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -v portainer_data:/data \
+                portainer/portainer-ce:latest >/dev/null 2>&1; then
+                print_success "Portainer container is running."
+                print_info "You can access Portainer at https://<your-server-ip>:9443"
+            else
+                print_warning "Failed to start the Portainer container."
+            fi
+        else
+            print_info "Portainer installation skipped."
+        fi
+
+        # Interactively install Watchtower
+        if gum_confirm "Install Watchtower for automatic container updates?"; then
+            print_info "Starting Watchtower container..."
+            sudo docker stop watchtower >/dev/null 2>&1 || true
+            sudo docker rm watchtower >/dev/null 2>&1 || true
+
+            if sudo docker run -d --name=watchtower --restart=always \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                containrrr/watchtower >/dev/null 2>&1; then
+                print_success "Watchtower container is running."
+                print_info "Watchtower will monitor and update your containers automatically."
+            else
+                print_warning "Failed to start the Watchtower container."
+            fi
+        else
+            print_info "Watchtower installation skipped."
+        fi
+    else
+        print_warning "Docker not installed, skipping server application configuration."
+    fi
+}
+
+# Configure server applications (Docker, Portainer, Watchtower)
+if [[ "$INSTALL_MODE" == "server" ]]; then
+    configure_server_applications
 fi
 
 print_success "Program installation from YAML completed." 

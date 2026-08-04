@@ -1,6 +1,11 @@
 #!/bin/bash
 set -uo pipefail
 
+# ============================================================================
+# System library: hardware/distro detection with caching.
+# Detection results are cached in SYSTEM_CACHE so repeated calls are cheap.
+# ============================================================================
+
 # Cache for detection results
 declare -gA SYSTEM_CACHE=()
 
@@ -16,7 +21,6 @@ find_systemd_boot_entries_dir() {
 }
 
 # Detect CPU vendor
-if ! declare -f detect_cpu_vendor >/dev/null 2>&1; then
 detect_cpu_vendor() {
     local cache_key="cpu_vendor"
     if [[ -n "${SYSTEM_CACHE[$cache_key]:-}" ]]; then
@@ -32,10 +36,8 @@ detect_cpu_vendor() {
     SYSTEM_CACHE[$cache_key]="$vendor"
     echo "$vendor"
 }
-fi
 
 # Detect GPU vendor
-if ! declare -f detect_gpu_vendor >/dev/null 2>&1; then
 detect_gpu_vendor() {
     local cache_key="gpu_vendor"
     if [[ -n "${SYSTEM_CACHE[$cache_key]:-}" ]]; then
@@ -54,10 +56,8 @@ detect_gpu_vendor() {
     SYSTEM_CACHE[$cache_key]="$vendor"
     echo "$vendor"
 }
-fi
 
 # Detect if system is a laptop
-if ! declare -f is_laptop >/dev/null 2>&1; then
 is_laptop() {
     local cache_key="is_laptop"
     if [[ -n "${SYSTEM_CACHE[$cache_key]:-}" ]]; then
@@ -80,10 +80,19 @@ is_laptop() {
             *laptop*|*notebook*|*portable*) is_laptop_val=true ;;
         esac
     fi
+    # Fall back to the DMI product name for common laptop indicators
+    if [ -f /sys/devices/virtual/dmi/id/product_name ]; then
+        local product_name
+        product_name=$(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null | tr '[:upper:]' '[:lower:]')
+        case "$product_name" in
+            *laptop*|*notebook*|*book*|*ultrabook*|*macbook*|*thinkpad*|*latitude*|*precision*)
+                is_laptop_val=true
+                ;;
+        esac
+    fi
     SYSTEM_CACHE[$cache_key]="$is_laptop_val"
     [[ "$is_laptop_val" == "true" ]]
 }
-fi
 
 # Get RAM in GB
 get_ram_gb() {
@@ -100,7 +109,6 @@ get_ram_gb() {
 }
 
 # Detect bootloader
-if ! declare -f detect_bootloader >/dev/null 2>&1; then
 detect_bootloader() {
     local cache_key="bootloader"
     if [[ -n "${SYSTEM_CACHE[$cache_key]:-}" ]]; then
@@ -124,10 +132,8 @@ detect_bootloader() {
     SYSTEM_CACHE[$cache_key]="$bootloader"
     echo "$bootloader"
 }
-fi
 
-# Check if system is UKI (Unified Kernel Image)
-if ! declare -f is_uki_system >/dev/null 2>&1; then
+# Check if system uses UKI (Unified Kernel Image)
 is_uki_system() {
     local cache_key="is_uki"
     if [[ -n "${SYSTEM_CACHE[$cache_key]:-}" ]]; then
@@ -155,10 +161,8 @@ is_uki_system() {
     SYSTEM_CACHE[$cache_key]="$result"
     [[ "$result" == "true" ]]
 }
-fi
 
 # Check if system is headless
-if ! declare -f is_headless_system >/dev/null 2>&1; then
 is_headless_system() {
     if systemctl is-active --quiet gdm 2>/dev/null || \
        systemctl is-active --quiet sddm 2>/dev/null || \
@@ -178,16 +182,72 @@ is_headless_system() {
     fi
     return 0
 }
-fi
 
 # Check if SSD
 is_ssd() {
     if command -v lsblk &>/dev/null; then
-        if lsblk -d -o rota | grep -q '^0$'; then
+        # Note: lsblk right-pads its numeric columns, so match whitespace-tolerant.
+        if lsblk -d -o rota | grep -qE '^[[:space:]]*0[[:space:]]*$'; then
             return 0
         fi
     fi
     return 1
+}
+
+# Get installed kernel types
+get_installed_kernel_types() {
+    local kernel_types=()
+
+    if rpm -q kernel >/dev/null 2>&1; then
+        kernel_types+=("kernel")
+    fi
+    if rpm -q kernel-rt >/dev/null 2>&1; then
+        kernel_types+=("kernel-rt")
+    fi
+
+    echo "${kernel_types[@]}"
+}
+
+# Check system compatibility for running the installer (Fedora, disk, network)
+check_system_compatibility() {
+    local issues=()
+
+    # Check if running as root (should not be)
+    if [[ $EUID -eq 0 ]]; then
+        issues+=("Script should not be run as root")
+    fi
+
+    # Check if on Fedora
+    if [[ ! -f /etc/fedora-release ]] && ! grep -q -i "fedora" /etc/os-release 2>/dev/null; then
+        issues+=("Not running on Fedora Linux")
+    fi
+
+    # Check disk space (need at least 2GB)
+    local available_space=$(df / | awk 'NR==2 {print $4}')
+    if [[ $available_space -lt 2097152 ]]; then
+        issues+=("Insufficient disk space (need 2GB, have $((available_space / 1024 / 1024))GB)")
+    fi
+
+    # Check internet connection
+    if ! ping -c 1 -W 5 fedoraproject.org &>/dev/null; then
+        issues+=("No internet connection")
+    fi
+
+    # Check bootloader compatibility
+    if [ ! -d "/boot" ]; then
+        issues+=("Boot directory not found")
+    fi
+
+    # Report issues
+    if [ ${#issues[@]} -gt 0 ]; then
+        log_error "System compatibility issues found:"
+        for issue in "${issues[@]}"; do
+            log_error "  - $issue"
+        done
+        return 1
+    fi
+
+    return 0
 }
 
 # Get system information summary

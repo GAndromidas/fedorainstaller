@@ -30,14 +30,31 @@ else
     fi
 fi
 
-# Install gaming packages using unified batch installation
-print_info "Installing gaming packages..."
-GAMING_PACKAGES=(
-    "mangohud"
-    "gamemode"
-    "steam"
-    "goverlay"
-)
+# Install gaming packages from YAML configuration
+print_info "Loading gaming package lists from gaming_mode.yaml..."
+
+GAMING_YAML="$SCRIPT_DIR/../configs/gaming_mode.yaml"
+if [[ ! -f "$GAMING_YAML" ]]; then
+    print_error "Gaming configuration file not found: $GAMING_YAML"
+    exit 1
+fi
+
+# Ensure yq is available
+if ! command -v yq &>/dev/null; then
+    print_info "yq is required for YAML parsing. Installing..."
+    sudo $DNF_CMD install -y yq
+    if ! command -v yq &>/dev/null; then
+        print_error "Failed to install yq. Please install it manually: sudo dnf install yq"
+        exit 1
+    fi
+fi
+
+GAMING_PACKAGES=()
+GAMING_FLATPAKS=()
+read_yaml_packages "$GAMING_YAML" ".dnf.packages" "GAMING_PACKAGES"
+read_yaml_packages "$GAMING_YAML" ".flatpak.apps" "GAMING_FLATPAKS"
+
+print_info "Found ${#GAMING_PACKAGES[@]} gaming packages and ${#GAMING_FLATPAKS[@]} gaming Flatpaks"
 
 install_packages_batch "dnf" "${GAMING_PACKAGES[@]}"
 
@@ -77,22 +94,18 @@ else
     print_warning "MangoHud not installed, skipping configuration."
 fi
 
-# Install additional gaming-related Flatpaks using unified batch installation
-print_info "Installing gaming-related Flatpaks..."
-GAMING_FLATPAKS=(
-    "com.heroicgameslauncher.hgl"
-    "io.github.Faugus.faugus-launcher"
-    "com.discordapp.Discord"
-    "com.vysp3r.ProtonPlus"
-)
+# Install additional gaming-related Flatpaks from YAML
+if [ ${#GAMING_FLATPAKS[@]} -gt 0 ]; then
+    print_info "Installing ${#GAMING_FLATPAKS[@]} gaming-related Flatpaks..."
 
-# Ensure Flatpak daemon is running
-if ! flatpak ps >/dev/null 2>&1; then
-    print_info "Starting Flatpak daemon..."
-    flatpak ps >/dev/null 2>&1 || true
+    # Ensure Flatpak daemon is running
+    if ! flatpak ps >/dev/null 2>&1; then
+        print_info "Starting Flatpak daemon..."
+        flatpak ps >/dev/null 2>&1 || true
+    fi
+
+    # Use unified batch installation for Flatpaks
+    install_packages_batch "flatpak" "${GAMING_FLATPAKS[@]}"
 fi
-
-# Use unified batch installation for Flatpaks
-install_packages_batch "flatpak" "${GAMING_FLATPAKS[@]}"
 
 print_success "Gaming and performance tweaks installation completed."
