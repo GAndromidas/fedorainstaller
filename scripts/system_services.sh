@@ -5,7 +5,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
-# System services configuration for Fedora - adapted from archinstaller
+# System services configuration for Fedora
 
 # Ensure firewalld is installed, enabled and its daemon is responsive.
 # Returns 0 when the daemon answers, 1 otherwise.
@@ -199,60 +199,127 @@ enable_power_management() {
     fi
 }
 
-enable_essential_services() {
-    step "Enabling essential services"
-    
+# Build the list of services whose unit file actually exists and whose
+# underlying package is installed. Kept separate so it can be reused both for
+# the interactive picker and for the enable loop.
+detect_enabled_services() {
     local services=()
-    
-    # SSH server — always installed and enabled so the system is reachable out
-    # of the box, regardless of the chosen installation mode.
-    if ! rpm -q openssh-server &>/dev/null; then
-        ui_info "Installing openssh-server..."
-        install_packages_batch "dnf" "openssh-server"
+
+    # SSH server — the unit is always available once openssh-server is present.
+    if rpm -q openssh-server &>/dev/null || rpm -q openssh &>/dev/null; then
+        services+=("sshd")
     fi
-    services+=("sshd")
-    
+
     # Bluetooth
     if rpm -q bluez &>/dev/null; then
         services+=("bluetooth")
     fi
-    
+
     # CUPS (printing)
     if rpm -q cups &>/dev/null; then
         services+=("cups")
     fi
-    
+
     # Cronie
     if rpm -q cronie &>/dev/null; then
         services+=("crond")
     fi
-    
+
     # fstrim timer for SSDs
     if is_ssd; then
         services+=("fstrim.timer")
     fi
-    
+
     # KDE Connect if installed (RPM or Flatpak). The enable loop below skips the
     # service if no kdeconnectd unit exists (Flatpak ships its own in-app daemon).
     if is_kdeconnect_installed; then
         services+=("kdeconnectd")
     fi
-    
-    # Enable services
+
+    # Keep only services that actually ship a unit on this system.
+    local available=()
     for svc in "${services[@]}"; do
         if systemctl list-unit-files | grep -q "^${svc}"; then
-            if ! systemctl is-active "$svc" &>/dev/null; then
-                ui_info "Enabling $svc..."
-                sudo systemctl enable --now "$svc" >/dev/null 2>&1
+            available+=("$svc")
+        fi
+    done
+
+    printf '%s\n' "${available[@]}"
+}
+
+install_sshd() {
+    if ! rpm -q openssh-server &>/dev/null; then
+        ui_info "Installing openssh-server..."
+        install_packages_batch "dnf" "openssh-server"
+    fi
+}
+
+# Interactive service selection. Lets the user pick which of
+# the detected services to enable at boot. sshd is always preselected so the
+# machine stays reachable out of the box; the rest are preselected too but can
+# be toggled off by unselecting them.
+prompt_service_selection() {
+    local available
+    mapfile -t available < <(detect_enabled_services)
+    [ ${#available[@]} -eq 0 ] && return 0
+
+    # Preselect everything by default (sshd must remain available).
+    local preselected="*"
+
+    step "Select which services to enable"
+
+    if [ "${DRY_RUN:-false}" = true ]; then
+        ui_info "Dry-run: would enable services: ${available[*]}"
+        SERVICES_TO_ENABLE=("${available[@]}")
+        return 0
+    fi
+
+    ui_info "Select the services to enable at boot (all preselected):"
+    local selected
+    selected=$(ui_multiselect_preselect "Services to enable" "$preselected" "${available[@]}")
+
+    if [ -z "$selected" ]; then
+        ui_warn "No services selected — nothing will be enabled except sshd."
+        SERVICES_TO_ENABLE=("sshd")
+        return 0
+    fi
+
+    mapfile -t SERVICES_TO_ENABLE <<< "$selected"
+    ui_info "Will enable: ${SERVICES_TO_ENABLE[*]}"
+}
+
+enable_essential_services() {
+    step "Enabling essential services"
+
+    # SSH server is always installed so the system is reachable out of the box,
+    # regardless of the chosen installation mode.
+    install_sshd
+
+    prompt_service_selection
+
+    # Enable selected services
+    for svc in "${SERVICES_TO_ENABLE[@]:-}"; do
+        [ -z "$svc" ] && continue
+        if [ "${DRY_RUN:-false}" = true ]; then
+            ui_info "Dry-run: would enable $svc"
+            continue
+        fi
+        if systemctl is-enabled "$svc" &>/dev/null || systemctl is-active "$svc" &>/dev/null; then
+            ui_info "$svc already enabled/running"
+        else
+            ui_info "Enabling $svc..."
+            if sudo systemctl enable --now "$svc" >/dev/null 2>&1; then
                 ui_success "$svc enabled"
             else
-                ui_info "$svc already running"
+                ui_warn "$svc could not be enabled"
             fi
         fi
     done
-    
+
     # Report SSH status clearly for headless/server setups
-    if systemctl is-active sshd &>/dev/null; then
+    if [ "${DRY_RUN:-false}" = true ]; then
+        ui_success "Dry-run: SSH server would be left running for: ssh ${USER}@<host>"
+    elif systemctl is-active sshd &>/dev/null; then
         ui_success "SSH server is running — you can connect with: ssh ${USER}@$(hostname -I 2>/dev/null | awk '{print $1}')"
     else
         ui_warn "SSH server could not be started"
@@ -348,7 +415,7 @@ apply_ram_based_tuning() {
     ui_success "RAM-based tuning applied"
 }
 
-# Apply advanced system optimizations (CachyOS-style kernel/network tuning)
+# Apply advanced system optimizations (kernel/network tuning)
 setup_advanced_optimizations() {
     step "Applying advanced system optimizations"
     

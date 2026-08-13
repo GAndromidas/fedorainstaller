@@ -309,16 +309,58 @@ ui_multiselect() {
     if supports_gum; then
         gum choose --header="$title" --no-limit --cursor.foreground "$GUM_PRIMARY" --selected.foreground "$GUM_PRIMARY" "${options[@]}"
     else
-        echo ""
-        echo -e "${THEME_HEADER}$title${RESET}"
-        echo -e "${THEME_MUTED}(Enter numbers space-separated)${RESET}"
-        echo ""
+        echo "" >&2
+        echo -e "${THEME_HEADER}$title${RESET}" >&2
+        echo -e "${THEME_MUTED}(Enter numbers space-separated)${RESET}" >&2
+        echo "" >&2
         local i=1
         for opt in "${options[@]}"; do
-            echo -e "  [ ] $i) $opt"
+            echo -e "  [ ] $i) $opt" >&2
             ((i++))
         done
-        echo ""
+        echo "" >&2
+        local selection
+        read -r -p "$(echo -e "${THEME_SECONDARY}Enter numbers (space-separated): ${RESET}")" selection
+        for num in $selection; do
+            if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le "$((i-1))" ]; then
+                echo "${options[$((num-1))]}"
+            fi
+        done
+    fi
+}
+
+# Multi-select menu with pre-selected options.
+# $1: title, $2: newline-separated list of pre-selected options (* = all),
+# then the full list of options.
+ui_multiselect_preselect() {
+    local title="$1"
+    local preselected="$2"
+    shift 2
+    local options=("$@")
+
+    if supports_gum; then
+        local selected_args=()
+        if [ "$preselected" = "*" ]; then
+            selected_args=(--selected="*")
+        elif [ -n "$preselected" ]; then
+            # gum --selected takes a comma-separated list
+            selected_args=(--selected="$(printf '%s' "$preselected" | tr '\n' ',')")
+        fi
+        gum choose --header="$title" --no-limit \
+            --cursor.foreground "$GUM_PRIMARY" --selected.foreground "$GUM_PRIMARY" \
+            --selected-prefix "[x] " --unselected-prefix "[ ] " \
+            "${selected_args[@]}" "${options[@]}"
+    else
+        echo "" >&2
+        echo -e "${THEME_HEADER}$title${RESET}" >&2
+        echo -e "${THEME_MUTED}(Enter numbers space-separated)${RESET}" >&2
+        echo "" >&2
+        local i=1
+        for opt in "${options[@]}"; do
+            echo -e "  [ ] $i) $opt" >&2
+            ((i++))
+        done
+        echo "" >&2
         local selection
         read -r -p "$(echo -e "${THEME_SECONDARY}Enter numbers (space-separated): ${RESET}")" selection
         for num in $selection; do

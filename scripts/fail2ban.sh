@@ -13,7 +13,7 @@ else
     exit 1
 fi
 
-# Custom fail2ban configuration (Fedora style, adapted from Arch)
+# Custom fail2ban configuration (Fedora style)
 step "Configure fail2ban (jail.local)"
 JAIL_LOCAL="/etc/fail2ban/jail.local"
 if [ ! -f "$JAIL_LOCAL" ]; then

@@ -76,7 +76,7 @@ flatpak_install_single() {
     fi
 }
 
-# Unified package installation function (similar to archinstaller's install_package_generic)
+# Unified package installation function
 # Parameters: $1 - Package manager type (dnf|flatpak), $@ - Packages to install
 # Returns: 0 on success, 1 if some packages failed
 install_package_generic() {

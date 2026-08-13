@@ -5,7 +5,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
-# System maintenance and cleanup for Fedora - adapted from archinstaller
+# System maintenance and cleanup for Fedora
 
 cleanup_and_optimize() {
     step "Performing final cleanup and optimizations"

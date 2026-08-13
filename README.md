@@ -52,7 +52,7 @@ Fedorainstaller runs a series of steps to transform a fresh Fedora system:
 4. **Gaming Mode** — Optional: reads `gaming_mode.yaml` and installs Steam, MangoHud, GameMode, Heroic Launcher, Discord
 5. **Hardware Detection** — Detects CPU/GPU vendor, installs appropriate drivers
 6. **Bootloader Configuration** — Configures GRUB or systemd-boot
-7. **System Services** — Configures firewalld (SSH + KDE Connect), user groups, power management, GPU drivers, RAM tuning, advanced sysctl tuning
+7. **System Services** — Configures firewalld (SSH + KDE Connect), user groups, power management, GPU drivers, RAM tuning, advanced sysctl tuning, and an interactive service picker to enable systemd services like sshd at boot
 8. **Fail2ban** — Installs and configures SSH brute-force protection
 9. **Maintenance** — Cleans up, removes unused packages
 10. **Wake-on-LAN** — Enables Wake-on-LAN on ethernet interfaces (desktops only)
