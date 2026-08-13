@@ -7,27 +7,116 @@ source "$SCRIPT_DIR/common.sh"
 
 # System services configuration for Fedora - adapted from archinstaller
 
-configure_firewall() {
-    step "Configuring firewall"
-    
-    # Fedora uses firewalld by default
+# Ensure firewalld is installed, enabled and its daemon is responsive.
+# Returns 0 when the daemon answers, 1 otherwise.
+ensure_firewalld_running() {
     if ! rpm -q firewalld &>/dev/null; then
         ui_info "Installing firewalld..."
         install_packages_batch "dnf" "firewalld"
     fi
-    
-    # Enable and start firewalld
+
+    sudo systemctl enable firewalld >/dev/null 2>&1
     if ! systemctl is-active firewalld &>/dev/null; then
-        sudo systemctl enable --now firewalld >/dev/null 2>&1
-        ui_success "firewalld enabled and started"
-    else
-        ui_info "firewalld already running"
+        sudo systemctl start firewalld >/dev/null 2>&1
     fi
-    
+
+    # Wait for the daemon to come up — firewall-cmd fails immediately with
+    # "FirewallD is not running" if called too soon after start.
+    local attempts=0
+    until firewall-cmd --state &>/dev/null || [ "$attempts" -ge 10 ]; do
+        sleep 1
+        ((attempts++))
+    done
+
+    if firewall-cmd --state &>/dev/null; then
+        ui_success "firewalld is running"
+        return 0
+    fi
+
+    ui_error "firewalld could not be started — firewall rules (SSH/Cockpit) will NOT be applied."
+    return 1
+}
+
+# List every zone a rule must be applied to: the default zone plus all
+# currently active zones (deduplicated). A rule added only to the default
+# zone is silently ineffective when an interface is bound to another zone.
+get_firewall_zones() {
+    local default_zone active_zones
+    default_zone=$(firewall-cmd --get-default-zone 2>/dev/null)
+    active_zones=$(firewall-cmd --get-active-zones 2>/dev/null | awk '!/^[[:space:]]/')
+    {
+        echo "$default_zone"
+        echo "$active_zones"
+    } | grep -v '^$' | sort -u
+}
+
+# Check whether a rule is active at runtime in a given zone.
+# $1: zone, $2: rule option, e.g. "--add-service=ssh" or "--add-port=1714-1764/tcp"
+firewall_rule_present() {
+    local zone="$1"
+    local rule="$2"
+    case "$rule" in
+        --add-service=*)
+            firewall-cmd --zone="$zone" --query-service="${rule#--add-service=}" >/dev/null 2>&1 ;;
+        --add-port=*)
+            firewall-cmd --zone="$zone" --query-port="${rule#--add-port=}" >/dev/null 2>&1 ;;
+        *)
+            return 1 ;;
+    esac
+}
+
+# Apply a firewall rule to the default zone AND every active zone.
+# A rule added only to the default zone is silently ineffective when the
+# interface is bound to a different zone, so this covers both cases.
+# Applies permanently, reloads the daemon, then enforces + verifies at runtime.
+# $1: a single firewall-cmd option, e.g. "--add-service=ssh" or "--add-port=1714-1764/tcp"
+firewall_allow() {
+    local rule="$1"
+    local zone ok=true
+
+    # 1) Persist the rule in every relevant zone.
+    while IFS= read -r zone; do
+        [ -z "$zone" ] && continue
+        if ! sudo firewall-cmd --permanent --zone="$zone" "$rule" >/dev/null 2>&1; then
+            ui_warn "Could not persist $rule in zone '$zone'"
+            ok=false
+        fi
+    done < <(get_firewall_zones)
+
+    # 2) Push permanent config into the running daemon.
+    sudo firewall-cmd --reload >/dev/null 2>&1
+
+    # 3) Enforce at runtime (fallback if reload was skipped) and verify per zone.
+    while IFS= read -r zone; do
+        [ -z "$zone" ] && continue
+        if ! firewall_rule_present "$zone" "$rule"; then
+            sudo firewall-cmd --zone="$zone" "$rule" >/dev/null 2>&1
+        fi
+        if firewall_rule_present "$zone" "$rule"; then
+            log_to_file "Firewall: $rule active in zone '$zone'"
+        else
+            ui_warn "Firewall rule NOT active in zone '$zone': $rule"
+            ok=false
+        fi
+    done < <(get_firewall_zones)
+
+    [ "$ok" = true ]
+}
+
+configure_firewall() {
+    step "Configuring firewall"
+
+    if ! ensure_firewalld_running; then
+        ui_error "Skipping firewall configuration — SSH will not be reachable. Run 'sudo systemctl enable --now firewalld && sudo firewall-cmd --add-service=ssh' manually."
+        return 1
+    fi
+
+    ui_info "Firewall zones in use: $(get_firewall_zones | tr '\n' ' ')"
+
     # SSH must always be allowed so the machine stays reachable after the install.
     firewall_allow "--add-service=ssh"
     firewall_allow "--add-service=cockpit"
-    
+
     # Open the KDE Connect port range whenever KDE Connect is installed (RPM or
     # Flatpak), so phone integration works out of the box.
     if is_kdeconnect_installed; then
@@ -36,27 +125,24 @@ configure_firewall() {
         firewall_allow "--add-port=1714-1764/tcp"
         ui_success "KDE Connect ports configured"
     fi
-    
-    sudo firewall-cmd --reload >/dev/null 2>&1
-    
-    if firewall-cmd --query-service=ssh 2>/dev/null; then
-        ui_success "Firewall configured (SSH allowed)"
-    else
-        ui_warn "Firewall configured, but SSH access could not be verified"
-    fi
-}
 
-# Apply a permanent firewall rule to the default zone AND every active zone.
-# A rule added only to the default zone is silently ineffective when the
-# interface is bound to a different zone, so this covers both cases.
-# $1: a single firewall-cmd option, e.g. "--add-service=ssh" or "--add-port=1714-1764/tcp"
-firewall_allow() {
-    local rule="$1"
-    sudo firewall-cmd --permanent "$rule" >/dev/null 2>&1
+    # Final verification: SSH must be open on the default AND every active zone.
+    local ssh_ok=true
     while IFS= read -r zone; do
         [ -z "$zone" ] && continue
-        sudo firewall-cmd --permanent --zone="$zone" "$rule" >/dev/null 2>&1
-    done < <(firewall-cmd --get-active-zones 2>/dev/null | awk '!/^[[:space:]]/')
+        if firewall-cmd --zone="$zone" --query-service=ssh &>/dev/null; then
+            ui_success "SSH allowed in zone '$zone'"
+        else
+            ui_error "SSH blocked in zone '$zone'!"
+            ssh_ok=false
+        fi
+    done < <(get_firewall_zones)
+
+    if [ "$ssh_ok" = true ]; then
+        ui_success "Firewall fully configured — SSH is reachable on all zones."
+    else
+        ui_error "Firewall configuration incomplete — SSH may be blocked. Check: firewall-cmd --list-all"
+    fi
 }
 
 # Detect KDE Connect installed either as an RPM package or a Flatpak app
@@ -146,8 +232,9 @@ enable_essential_services() {
         services+=("fstrim.timer")
     fi
     
-    # KDE Connect if installed
-    if rpm -q kdeconnect-kde &>/dev/null || rpm -q kdeconnect &>/dev/null; then
+    # KDE Connect if installed (RPM or Flatpak). The enable loop below skips the
+    # service if no kdeconnectd unit exists (Flatpak ships its own in-app daemon).
+    if is_kdeconnect_installed; then
         services+=("kdeconnectd")
     fi
     

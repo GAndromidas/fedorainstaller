@@ -69,6 +69,19 @@ install_packages_batch "dnf" \
 print_info "Updating system packages..."
 sudo $DNF_CMD upgrade --refresh -y
 
+# --- Enable sudo password feedback (terminal asterisks) ---
+set_sudo_pwfeedback() {
+  if ! sudo grep -q '^Defaults.*pwfeedback' /etc/sudoers /etc/sudoers.d/* 2>/dev/null; then
+    print_info "Enabling sudo password feedback (asterisks shown when typing password)..."
+    echo 'Defaults env_reset,pwfeedback' | sudo EDITOR='tee -a' visudo
+    print_success "sudo password feedback enabled."
+  else
+    print_success "sudo password feedback already enabled."
+  fi
+}
+
+set_sudo_pwfeedback
+
 # --- CPU Microcode ---
 cpu_vendor=$(detect_cpu_vendor)
 if [ "$cpu_vendor" = "intel" ]; then

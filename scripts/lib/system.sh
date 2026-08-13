@@ -162,6 +162,33 @@ is_uki_system() {
     [[ "$result" == "true" ]]
 }
 
+# Detect the desktop environment, with a process-based fallback so DE-specific
+# setup still works when the installer runs outside a graphical session (e.g.
+# from a TTY or SSH where XDG_CURRENT_DESKTOP is unset).
+detect_desktop_environment() {
+    local de="${XDG_CURRENT_DESKTOP:-}"
+    if [ -n "$de" ]; then
+        case "${de,,}" in
+            *kde*)   echo "kde" ;;
+            *gnome*) echo "gnome" ;;
+            *cosmic*) echo "cosmic" ;;
+        esac
+        return 0
+    fi
+
+    # Fallback: inspect running desktop processes.
+    if pgrep -x plasmashell >/dev/null 2>&1 || pgrep -x kwin_x11 >/dev/null 2>&1 || pgrep -x kwin_wayland >/dev/null 2>&1; then
+        echo "kde"
+    elif pgrep -x gnome-shell >/dev/null 2>&1; then
+        echo "gnome"
+    elif pgrep -x cosmic-comp >/dev/null 2>&1; then
+        echo "cosmic"
+    else
+        echo ""
+        return 1
+    fi
+}
+
 # Check if system is headless
 is_headless_system() {
     if systemctl is-active --quiet gdm 2>/dev/null || \
@@ -178,6 +205,11 @@ is_headless_system() {
         return 1
     fi
     if [[ -n "${XDG_CURRENT_DESKTOP:-}" ]]; then
+        return 1
+    fi
+    # Recognize plasma/cosmic sessions via process fallback as well, so a
+    # running DE is never mistaken for a headless system when launched from a TTY.
+    if detect_desktop_environment &>/dev/null; then
         return 1
     fi
     return 0

@@ -49,14 +49,13 @@ else
 fi
 
 # Read desktop environment specific packages
-DE=""
-if [ "$XDG_CURRENT_DESKTOP" ]; then
-    case "${XDG_CURRENT_DESKTOP,,}" in
-        *gnome*) DE="gnome" ;;
-        *kde*)   DE="kde" ;;
-        *cosmic*) DE="cosmic" ;;
-    esac
-fi
+# Uses shared detection with a process-based fallback, so DE-specific setup
+# works even when run from a TTY/SSH where XDG_CURRENT_DESKTOP is unset.
+DE=$(detect_desktop_environment)
+case "$DE" in
+    gnome|kde|cosmic) ;;
+    *) DE="" ;;  # unsupported DE — skip DE-specific packages
+esac
 
 if [ -n "$DE" ]; then
     read_yaml_packages "$PROGRAMS_YAML" ".desktop_environments.$DE.install" "de_dnf_packages"
