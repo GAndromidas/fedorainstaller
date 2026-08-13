@@ -254,40 +254,9 @@ install_sshd() {
     fi
 }
 
-# Interactive service selection. Lets the user pick which of
-# the detected services to enable at boot. sshd is always preselected so the
-# machine stays reachable out of the box; the rest are preselected too but can
-# be toggled off by unselecting them.
-prompt_service_selection() {
-    local available
-    mapfile -t available < <(detect_enabled_services)
-    [ ${#available[@]} -eq 0 ] && return 0
-
-    # Preselect everything by default (sshd must remain available).
-    local preselected="*"
-
-    step "Select which services to enable"
-
-    if [ "${DRY_RUN:-false}" = true ]; then
-        ui_info "Dry-run: would enable services: ${available[*]}"
-        SERVICES_TO_ENABLE=("${available[@]}")
-        return 0
-    fi
-
-    ui_info "Select the services to enable at boot (all preselected):"
-    local selected
-    selected=$(ui_multiselect_preselect "Services to enable" "$preselected" "${available[@]}")
-
-    if [ -z "$selected" ]; then
-        ui_warn "No services selected — nothing will be enabled except sshd."
-        SERVICES_TO_ENABLE=("sshd")
-        return 0
-    fi
-
-    mapfile -t SERVICES_TO_ENABLE <<< "$selected"
-    ui_info "Will enable: ${SERVICES_TO_ENABLE[*]}"
-}
-
+# Enable all detected services automatically. sshd is always installed and
+# enabled so the machine stays reachable out of the box; KDE Connect is
+# enabled automatically whenever it is found (RPM or Flatpak).
 enable_essential_services() {
     step "Enabling essential services"
 
@@ -295,10 +264,12 @@ enable_essential_services() {
     # regardless of the chosen installation mode.
     install_sshd
 
-    prompt_service_selection
+    # Enable every detected service: sshd always, plus bluetooth, CUPS, cronie,
+    # fstrim (SSDs) and KDE Connect whenever their package is present.
+    local services
+    mapfile -t services < <(detect_enabled_services)
 
-    # Enable selected services
-    for svc in "${SERVICES_TO_ENABLE[@]:-}"; do
+    for svc in "${services[@]}"; do
         [ -z "$svc" ] && continue
         if [ "${DRY_RUN:-false}" = true ]; then
             ui_info "Dry-run: would enable $svc"
