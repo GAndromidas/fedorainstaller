@@ -449,14 +449,20 @@ else
   fi
 fi
 
-# Step 10: Wake-on-LAN (desktops only)
+# Step 10: Wake-on-LAN (desktops only; exit 2 = graceful skip on
+# VM/container/laptop or no WoL-capable NIC — not a failure)
 dashboard_step "Wake-on-LAN Configuration" 10
 if is_step_complete "wakeonlan_config"; then
   dashboard_skip
 else
-  if dashboard_run "$SCRIPTS_DIR/wakeonlan_config.sh"; then
+  dashboard_run "$SCRIPTS_DIR/wakeonlan_config.sh"
+  wol_exit=$?
+  if [ "$wol_exit" -eq 0 ]; then
     mark_step_complete_with_progress "wakeonlan_config" "completed"
     dashboard_ok
+  elif [ "$wol_exit" -eq 2 ]; then
+    mark_step_complete_with_progress "wakeonlan_config" "completed"
+    dashboard_skip "Skipped (VM/laptop/no WoL)"
   else
     mark_step_complete_with_progress "wakeonlan_config" "failed"
     dashboard_fail
