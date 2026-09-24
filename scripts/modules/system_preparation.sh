@@ -1,6 +1,6 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../common.sh"
 
 step "System Preparation"
 
@@ -31,9 +31,9 @@ print_info "Installing helper utilities..."
 install_packages_batch "dnf" "fastfetch" "btop" "inxi" "hwinfo" "lshw" "usbutils" "pciutils"
 
 # --- Enable COPR Repos ---
-if [ -f "$SCRIPT_DIR/../configs/programs.yaml" ]; then
+if [ -f "$SCRIPT_DIR/../../configs/programs.yaml" ]; then
   if command -v yq &>/dev/null; then
-    COPR_REPOS=$(yq '.copr[] | .repo' "$SCRIPT_DIR/../configs/programs.yaml" 2>/dev/null)
+    COPR_REPOS=$(yq '.copr[] | .repo' "$SCRIPT_DIR/../../configs/programs.yaml" 2>/dev/null)
     if [ -n "$COPR_REPOS" ]; then
       for repo in $COPR_REPOS; do
         print_info "Enabling COPR repo: $repo"

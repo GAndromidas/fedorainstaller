@@ -1,7 +1,7 @@
 #!/bin/bash
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../common.sh"
 
 step "Install programs from YAML configuration"
 
@@ -13,7 +13,7 @@ declare -a de_flatpak_packages=()
 declare -a de_remove_packages=()
 
 # Check if programs.yaml exists
-PROGRAMS_YAML="$SCRIPT_DIR/../configs/programs.yaml"
+PROGRAMS_YAML="$SCRIPT_DIR/../../configs/programs.yaml"
 if [[ ! -f "$PROGRAMS_YAML" ]]; then
     print_error "Programs configuration file not found: $PROGRAMS_YAML"
     exit 1

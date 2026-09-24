@@ -2,7 +2,7 @@
 # Gaming and performance tweaks installation
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../common.sh"
 
 step "Gaming and performance tweaks"
 
@@ -13,12 +13,16 @@ step "Gaming and performance tweaks"
   echo -e "${THEME_BORDER}═══════════════════════════════════════════════════════════════${RESET}"
 } >/dev/tty
 
-if supports_gum; then
+if [[ "${AUTO_CONFIRM:-false}" == true ]]; then
+    print_info "Unattended mode: installing gaming and performance tweaks (default choice)."
+elif supports_gum; then
     if gum confirm "Install gaming and performance tweaks?" --default=true 2>/dev/tty; then
         :
     else
         print_info "Gaming tweaks skipped."
-        return 0
+        # Exit 2 = declined: the installer records SKIPPED (not COMPLETED)
+        # so a later re-run offers gaming setup again.
+        return 2
     fi
 else
     echo -n "Install gaming tweaks? [Y/n]: " >/dev/tty
@@ -26,14 +30,15 @@ else
     response="${response:-Y}"
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
         print_info "Gaming tweaks skipped."
-        return 0
+        # Exit 2 = declined (see above).
+        return 2
     fi
 fi
 
 # Install gaming packages from YAML configuration
 print_info "Loading gaming package lists from gaming_mode.yaml..."
 
-GAMING_YAML="$SCRIPT_DIR/../configs/gaming_mode.yaml"
+GAMING_YAML="$SCRIPT_DIR/../../configs/gaming_mode.yaml"
 if [[ ! -f "$GAMING_YAML" ]]; then
     print_error "Gaming configuration file not found: $GAMING_YAML"
     exit 1
@@ -64,7 +69,7 @@ sudo systemctl enable --now gamemoded 2>/dev/null || true
 if rpm -q mangohud >/dev/null 2>&1 || command -v mangohud >/dev/null; then
     print_info "Configuring MangoHud..."
     MANGOHUD_CONFIG_DIR="$HOME/.config/MangoHud"
-    MANGOHUD_CONFIG_SOURCE="$SCRIPT_DIR/../configs/MangoHud.conf"
+    MANGOHUD_CONFIG_SOURCE="$SCRIPT_DIR/../../configs/MangoHud.conf"
 
     # Create MangoHud config directory if it doesn't exist
     if ! mkdir -p "$MANGOHUD_CONFIG_DIR" 2>/dev/null; then
@@ -87,7 +92,7 @@ if rpm -q mangohud >/dev/null 2>&1 || command -v mangohud >/dev/null; then
             fi
         else
             print_warning "MangoHud configuration file not found at: $MANGOHUD_CONFIG_SOURCE"
-            print_info "Expected path: $(realpath "$SCRIPT_DIR/../configs/MangoHud.conf" 2>/dev/null || echo "N/A")"
+            print_info "Expected path: $(realpath "$SCRIPT_DIR/../../configs/MangoHud.conf" 2>/dev/null || echo "N/A")"
         fi
     fi
 else

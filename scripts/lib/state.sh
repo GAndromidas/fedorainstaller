@@ -3,107 +3,158 @@ set -uo pipefail
 
 # ============================================================================
 # State library: installation progress tracking, resume, error handling and
-# reboot prompts. Writes to $STATE_FILE (~/.fedorainstaller.state).
+# reboot prompts. Writes to $STATE_FILE (/var/tmp persists across reboots
+# so resume works).
+#
+# This file is the single source of truth for cleanup_on_error and
+# save_log_on_exit — install.sh only wires them to traps, it must not
+# redefine them.
 # ============================================================================
 
 # Validate state file integrity
 validate_state_file() {
-    if [ ! -f "$STATE_FILE" ]; then
+    if [ ! -e "$STATE_FILE" ]; then
         return 0  # No file is valid
     fi
 
-    # Check if file is readable and not empty
-    if [ ! -r "$STATE_FILE" ] || [ ! -s "$STATE_FILE" ]; then
-        log_warning "State file is corrupted or empty. Starting fresh installation."
+    if [ ! -f "$STATE_FILE" ] || [ ! -r "$STATE_FILE" ]; then
+        log_warning "State file is not readable. Starting with a fresh state file."
         rm -f "$STATE_FILE" 2>/dev/null || true
         return 1
+    fi
+
+    if [ ! -s "$STATE_FILE" ]; then
+        rm -f "$STATE_FILE" 2>/dev/null || true
+        return 0
     fi
 
     return 0
 }
 
-# Mark step as completed with atomic write
-mark_step_complete() {
-    local step_name="$1"
-
-    # Validate step name
-    if [ -z "$step_name" ]; then
-        log_error "mark_step_complete: step_name cannot be empty"
-        return 1
-    fi
-
-    # Atomic write with file locking to prevent corruption
-    local temp_state_file="$STATE_FILE.tmp.$$"
+# Append one line to the state file under an exclusive lock.
+state_write() {
+    local line="$1"
+    mkdir -p "$(dirname "$STATE_FILE")" 2>/dev/null || return 1
     (
         flock -x 200
-        echo "$step_name" >> "$temp_state_file"
-    ) 200>"$temp_state_file" && mv "$temp_state_file" "$STATE_FILE" 2>/dev/null || {
-        log_error "Failed to update state file for step: $step_name"
-        return 1
-    }
+        printf '%s\n' "$line" >> "$STATE_FILE"
+    ) 200>>"$STATE_FILE" 2>/dev/null
 }
 
-# Mark step with status (completed/failed)
+# Mark step with status (completed/skipped/failed)
 mark_step_complete_with_progress() {
+    # Preview runs must never mutate persistent resume state.
+    if [[ "${DRY_RUN:-false}" == true ]]; then
+        log_debug "Dry-run: not writing state for step ${1:-unknown}"
+        return 0
+    fi
+
     local step_name="$1"
     local status="${2:-completed}"
 
-    # Validate step name
     if [ -z "$step_name" ]; then
         log_error "mark_step_complete_with_progress: step_name cannot be empty"
         return 1
     fi
 
-    # Write status to state file with consistent format for parsing
-    if [ "$status" = "completed" ]; then
-        echo "COMPLETED: $step_name" >> "$STATE_FILE"
-    else
-        echo "FAILED: $step_name" >> "$STATE_FILE"
-    fi
+    case "$status" in
+        completed|skipped|failed) state_write "${status^^}: $step_name" ;;
+        *) log_error "Invalid state '$status' for step '$step_name'"; return 1 ;;
+    esac
 }
 
 # Check if step was completed (checks for "COMPLETED: stepname" format)
 is_step_complete() {
-    [ -f "$STATE_FILE" ] && grep -q "^COMPLETED: $1$" "$STATE_FILE"
+    [ -f "$STATE_FILE" ] && grep -qFx "COMPLETED: $1" "$STATE_FILE"
 }
 
-# ===== Error handling =====
+is_step_skipped() {
+    [ -f "$STATE_FILE" ] && grep -qFx "SKIPPED: $1" "$STATE_FILE"
+}
+
+# COMPLETED or SKIPPED both mean "don't re-run this step on resume".
+# Use is_step_complete / is_step_skipped when the distinction matters
+# (e.g. gaming re-offers when skipped, wake-on-lan does not).
+is_step_done() {
+    is_step_complete "$1" || is_step_skipped "$1"
+}
+
+state_has_failure() {
+    [ -f "$STATE_FILE" ] && grep -q '^FAILED:' "$STATE_FILE"
+}
+
+state_clear() {
+    rm -f "$STATE_FILE" 2>/dev/null || true
+}
+
+# Strip FAILED: entries after a run reaches the end successfully — keeps
+# COMPLETED/SKIPPED history but stops a stale failure from an earlier
+# interrupted attempt confusing future summaries/resume decisions.
+state_clear_failures() {
+    [ -f "$STATE_FILE" ] || return 0
+    local tmp
+    tmp=$(mktemp "${STATE_FILE}.tmp.XXXXXX") || return 1
+    grep -v '^FAILED:' "$STATE_FILE" > "$tmp" || true
+    if ! mv -f "$tmp" "$STATE_FILE"; then
+        rm -f "$tmp"
+        return 1
+    fi
+}
+
+# ===== Error handling (single source — do not duplicate in install.sh) =====
 
 # Enhanced error handling and cleanup on failure/exit
 cleanup_on_error() {
-    local exit_code=${1:-$?}
-    local error_line=${2:-$LINENO}
+    local exit_code="${1:-$?}"
+    local context="${2:-}"
 
-    if [ $exit_code -ne 0 ]; then
-        # Mark installation as failed
-        INSTALLATION_SUCCESS=false
-
-        log_error "Installation failed with exit code $exit_code at line $error_line"
+    if [ "$exit_code" -ne 0 ]; then
+        if [ -n "$context" ]; then
+            log_error "Installation ended: $context (exit code $exit_code)"
+        else
+            log_error "Installation failed with exit code $exit_code"
+        fi
         log_error "Check the log file for details: $INSTALL_LOG"
 
         # Kill sudo keep-alive if running
-        if [ -n "${SUDO_KEEPALIVE_PID+x}" ]; then
-            kill $SUDO_KEEPALIVE_PID 2>/dev/null || true
+        if declare -f stop_sudo_keepalive >/dev/null 2>&1; then
+            stop_sudo_keepalive || true
+        elif [ -n "${SUDO_KEEPALIVE_PID:-}" ]; then
+            kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
         fi
+
+        # Check if steps actually failed — if all steps completed, don't mark as failure
+        # Use state file as source of truth (more reliable than ERRORS array which runs in subshells)
+        if [ -f "$STATE_FILE" ] && ! grep -q "^FAILED:" "$STATE_FILE" 2>/dev/null; then
+            log_warning "All installation steps completed successfully despite external signal (exit code $exit_code)"
+            return 0
+        fi
+
+        # Mark installation as failed
+        INSTALLATION_SUCCESS=false
 
         # Offer recovery options
         echo ""
         ui_error "Installation encountered an error!"
-        ui_info "Options:"
+        ui_header "Recovery Options"
         ui_info "1. Run the script again to resume from where it left off"
         ui_info "2. Check the log file: $INSTALL_LOG"
         ui_info "3. Start fresh installation: rm -f $STATE_FILE"
 
-        # Save error state
-        echo "FAILED: Installation failed at line $error_line (exit code: $exit_code)" >> "$STATE_FILE"
+        # Save error state (no bogus line number — step-level FAILED lines are precise)
+        if [[ "${DRY_RUN:-false}" != true ]]; then
+            echo "FAILED: Installation ended (exit code: $exit_code)${context:+ — $context}" >> "$STATE_FILE"
+        fi
     fi
 }
 
 # Function to save log on exit
 save_log_on_exit() {
     # Kill sudo keep-alive if running
-    if [ -n "${SUDO_KEEPALIVE_PID+x}" ]; then
-        kill $SUDO_KEEPALIVE_PID 2>/dev/null || true
+    if declare -f stop_sudo_keepalive >/dev/null 2>&1; then
+        stop_sudo_keepalive || true
+    elif [ -n "${SUDO_KEEPALIVE_PID:-}" ]; then
+        kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
     fi
 
     {
@@ -112,13 +163,22 @@ save_log_on_exit() {
         echo "Installation ended: $(date)"
         echo "=========================================="
 
-        # Add summary if installation completed successfully
-        if [ "$INSTALLATION_SUCCESS" = "true" ]; then
-            echo "Installation completed successfully!"
-            echo "Total installation time: $(($(date +%s) - INSTALLATION_START_TIME)) seconds"
-        else
+        # Determine actual installation status from state file (more reliable than
+        # INSTALLATION_SUCCESS, which can be false due to external signals like
+        # SIGTERM after all steps completed)
+        if [ -f "$STATE_FILE" ] && grep -q "^FAILED:" "$STATE_FILE" 2>/dev/null; then
             echo "Installation completed with errors!"
             echo "Check the log above for details."
+        else
+            echo "Installation completed successfully!"
+            local start_sec="${START_TIME_SEC:-$SECONDS}"
+            local elapsed=$(( SECONDS - start_sec ))
+            (( elapsed < 0 )) && elapsed=0
+            if declare -f format_time >/dev/null 2>&1; then
+                echo "Total installation time: $(format_time "$elapsed")"
+            else
+                echo "Total installation time: ${elapsed}s"
+            fi
         fi
     } >> "$INSTALL_LOG"
 }
@@ -134,6 +194,17 @@ delete_fedorainstaller_files() {
 
 # Prompt for reboot
 prompt_reboot() {
+    # Preview runs and unattended runs must never trigger a real reboot from
+    # here: dry-run changes nothing, and --yes accepts safe defaults only.
+    if [[ "${DRY_RUN:-false}" == true ]]; then
+        log_debug "Dry-run: skipping reboot prompt"
+        return 0
+    fi
+    if [[ "${AUTO_CONFIRM:-false}" == true ]]; then
+        ui_info "Unattended mode: reboot skipped. Reboot manually with 'sudo reboot' when ready."
+        return 0
+    fi
+
     local errors_present="${1:-0}"
     if [ "$errors_present" = "0" ]; then
         echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
@@ -217,6 +288,9 @@ show_resume_menu() {
                 completed_steps+=("$step")
                 step_status+=("completed")
                 last_completed_step="$step_name"
+            elif [[ "$step" =~ ^SKIPPED:\ (.+)$ ]]; then
+                completed_steps+=("$step")
+                step_status+=("skipped")
             elif [[ "$step" =~ ^FAILED:\ (.+)$ ]]; then
                 local step_name="${BASH_REMATCH[1]}"
                 completed_steps+=("$step")
@@ -251,6 +325,9 @@ show_resume_menu() {
             case "$status" in
                 "completed")
                     echo -e "${GREEN}  [COMPLETED] $display_step${RESET}"
+                    ;;
+                "skipped")
+                    echo -e "${CYAN}  [SKIPPED] $display_step${RESET}"
                     ;;
                 "failed")
                     echo -e "${RED}  [FAILED] $display_step${RESET}"

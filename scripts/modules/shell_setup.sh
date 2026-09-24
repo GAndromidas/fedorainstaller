@@ -1,6 +1,6 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../common.sh"
 
 step "Shell Setup"
 
@@ -24,8 +24,8 @@ if [ "$SHELL" != "$(which zsh)" ]; then
 fi
 
 # --- .zshrc ---
-if [ -f "$SCRIPT_DIR/../configs/.zshrc" ]; then
-  cp "$SCRIPT_DIR/../configs/.zshrc" "$HOME/"
+if [ -f "$SCRIPT_DIR/../../configs/.zshrc" ]; then
+  cp "$SCRIPT_DIR/../../configs/.zshrc" "$HOME/"
 fi
 
 # --- Starship ---
@@ -34,16 +34,16 @@ if ! command -v starship >/dev/null; then
   sh -c "$(curl -fsSL https://starship.rs/install.sh)" "" -y
 fi
 mkdir -p "$HOME/.config"
-if [ -f "$SCRIPT_DIR/../configs/starship.toml" ]; then
-  cp "$SCRIPT_DIR/../configs/starship.toml" "$HOME/.config/starship.toml"
+if [ -f "$SCRIPT_DIR/../../configs/starship.toml" ]; then
+  cp "$SCRIPT_DIR/../../configs/starship.toml" "$HOME/.config/starship.toml"
 fi
 
 # --- Fastfetch config ---
 if command -v fastfetch >/dev/null 2>&1; then
   CONFIG_DIR="$HOME/.config/fastfetch"
   mkdir -p "$CONFIG_DIR"
-  if [ -f "$SCRIPT_DIR/../configs/config.jsonc" ]; then
-    cp "$SCRIPT_DIR/../configs/config.jsonc" "$CONFIG_DIR/config.jsonc"
+  if [ -f "$SCRIPT_DIR/../../configs/config.jsonc" ]; then
+    cp "$SCRIPT_DIR/../../configs/config.jsonc" "$CONFIG_DIR/config.jsonc"
   fi
 fi
 

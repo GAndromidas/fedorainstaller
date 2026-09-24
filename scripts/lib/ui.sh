@@ -70,6 +70,12 @@ gum_confirm() {
     local prompt="$1"
     local default="${2:-true}"  # Default to true (yes)
 
+    # --yes / unattended mode accepts the existing dialog default.
+    if [[ "${AUTO_CONFIRM:-false}" == true ]]; then
+        log_to_file "Auto-confirmed default ($default): $prompt"
+        [[ "$default" == "true" ]] && return 0 || return 1
+    fi
+
     if supports_gum; then
         if [ "$default" = "true" ]; then
             gum confirm --default=true "$prompt"
@@ -333,6 +339,14 @@ ui_multiselect() {
 ui_confirm() {
     local question="$1"
     local description="${2:-}"
+    local default_yes="${3:-true}"
+
+    # --yes / unattended mode accepts the existing dialog default. Callers can
+    # pass false when the original prompt intentionally defaulted to No.
+    if [[ "${AUTO_CONFIRM:-false}" == true ]]; then
+        log_to_file "Auto-confirmed default ($default_yes): $question"
+        [[ "$default_yes" == true ]] && return 0 || return 1
+    fi
 
     if supports_gum; then
         (

@@ -22,7 +22,7 @@ set -uo pipefail
 # Get scripts directory (handles both direct execution and sourcing)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../common.sh"
 
 # Color binding for prompt
 BOLD="${THEME_TEXT_BOLD}"
@@ -442,6 +442,12 @@ show_wol_status() {
 # (iface name, ALL, or SKIP) goes to stdout for $(...) capture.
 prompt_interface_selection() {
     local interfaces=("$@")
+    # Unattended mode never guesses across NICs: skip rather than block.
+    # ONLY the final token (iface name, ALL, or SKIP) goes to stdout.
+    if [[ "${AUTO_CONFIRM:-false}" == true ]]; then
+        echo "SKIP"
+        return 0
+    fi
     local best_iface="" choices=()
     best_iface=$(pick_best_interface "${interfaces[@]}" 2>/dev/null || true)
 
@@ -520,6 +526,10 @@ wol_confirm_tty() {
     local question="${1:-Continue?}"
     local answer=""
     local prompt_text="Y/n"
+    # Unattended mode accepts the default (yes) without blocking on /dev/tty.
+    if [[ "${AUTO_CONFIRM:-false}" == true ]]; then
+        return 0
+    fi
     if _wol_has_tty; then
         while true; do
             printf '%s [%s]: ' "$question" "$prompt_text" >/dev/tty 2>/dev/null || printf '%s [%s]: ' "$question" "$prompt_text" >&2

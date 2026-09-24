@@ -54,6 +54,11 @@ init_logging() {
     echo "=== Fedora Installer Log - $(date) ===" >> "$INSTALL_LOG"
 }
 
+# Initialize core subsystems (logging). Called once by install.sh.
+init_core() {
+    init_logging
+}
+
 # Append a raw line to the installation log
 log_to_file() {
     local message="$1"

@@ -85,8 +85,10 @@ SUDO_KEEPALIVE_PID=""
 
 # Distribution detection
 DNF_CMD=$(command -v dnf5 || command -v dnf)
-STATE_FILE="$HOME/.fedorainstaller.state"
-INSTALL_LOG="$HOME/.fedorainstaller.log"
+# /var/tmp persists across reboots so resume works; $HOME legacy state is
+# migrated by install.sh. Respect values already set by the caller.
+: "${STATE_FILE:=/var/tmp/fedorainstaller.state}"
+: "${INSTALL_LOG:=/var/tmp/fedorainstaller.log}"
 
 # Only set these if not already set by install.sh
 # Note: When sourced from install.sh, these are already set correctly
