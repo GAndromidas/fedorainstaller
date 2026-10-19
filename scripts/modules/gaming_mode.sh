@@ -9,7 +9,7 @@ step "Gaming and performance tweaks"
 {
   echo -e "\n${THEME_BORDER}═══════════════════════════════════════════════════════════════${RESET}"
   echo -e "${THEME_HEADER}  GAMING & PERFORMANCE TWEAKS${RESET}"
-  echo -e "${THEME_TEXT}  Includes: MangoHud, GameMode, Steam, GOverlay, Heroic Launcher, Discord, and more.${RESET}"
+  echo -e "${THEME_TEXT}  Includes: MangoHud, GameMode, Steam, GOverlay, Heroic Launcher, ProtonPlus, Discord, and more.${RESET}"
   echo -e "${THEME_BORDER}═══════════════════════════════════════════════════════════════${RESET}"
 } >/dev/tty
 
@@ -61,9 +61,24 @@ read_yaml_packages "$GAMING_YAML" ".flatpak.apps" "GAMING_FLATPAKS"
 
 print_info "Found ${#GAMING_PACKAGES[@]} gaming packages and ${#GAMING_FLATPAKS[@]} gaming Flatpaks"
 
-install_packages_batch "dnf" "${GAMING_PACKAGES[@]}"
+# Batch return codes gate nothing fatal by themselves (single-package
+# failures recover below), but a batch where NOTHING installed is a step
+# failure — never silently mark it COMPLETED. BATCH_PENDING (set by
+# install_packages_batch) is the already-installed filter count, so fully
+# installed reruns don't false-fail.
+_dnf_installed_before=${#INSTALLED_PACKAGES[@]}
+install_packages_batch "dnf" "${GAMING_PACKAGES[@]}" || true
+if [[ ${BATCH_PENDING:-0} -gt 0 && ${#INSTALLED_PACKAGES[@]} -eq ${_dnf_installed_before} ]]; then
+    print_error "FAILED installing all ${BATCH_PENDING} pending gaming packages" "Batch failure — see log"
+    return 1
+fi
 
-sudo systemctl enable --now gamemoded 2>/dev/null || true
+# gamemode is D-Bus activated: there is no gamemoded.service unit, so the
+# old `systemctl enable --now gamemoded` was a permanent silent no-op. Just
+# confirm the daemon exists on disk.
+if command -v gamemoded >/dev/null 2>&1; then
+    print_info "GameMode daemon available (D-Bus activated)"
+fi
 
 # Copy MangoHud configuration
 if rpm -q mangohud >/dev/null 2>&1 || command -v mangohud >/dev/null; then
@@ -109,8 +124,14 @@ if [ ${#GAMING_FLATPAKS[@]} -gt 0 ]; then
         flatpak ps >/dev/null 2>&1 || true
     fi
 
-    # Use unified batch installation for Flatpaks
-    install_packages_batch "flatpak" "${GAMING_FLATPAKS[@]}"
+    # Same gate as the DNF batch above: an all-zero install fails the step,
+    # but only when something was actually pending (BATCH_PENDING).
+    _flat_before=${#INSTALLED_PACKAGES[@]}
+    install_packages_batch "flatpak" "${GAMING_FLATPAKS[@]}" || true
+    if [[ ${BATCH_PENDING:-0} -gt 0 && ${#INSTALLED_PACKAGES[@]} -eq ${_flat_before} ]]; then
+        print_error "FAILED installing all ${BATCH_PENDING} gaming Flatpaks"
+        return 1
+    fi
 fi
 
 print_success "Gaming and performance tweaks installation completed."

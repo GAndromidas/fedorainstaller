@@ -12,48 +12,43 @@ GPU_VENDOR=$(detect_gpu_vendor)
 print_info "Detected CPU vendor: ${CPU_VENDOR:-unknown}"
 print_info "Detected GPU vendor: ${GPU_VENDOR:-none}"
 
-# Install appropriate GPU drivers and utilities
+# Install appropriate GPU drivers and utilities.
+# RPM-Fusion REAL package names: nvidia-utils / nvidia-driver-cuda are Arch
+# names and always failed here (batch failure + N per-package fallbacks).
+# One merged transaction: GPU drivers + the general utils.
+HARDWARE_PACKAGES=("lshw" "cpuid")
+
 case "$GPU_VENDOR" in
     "nvidia")
         print_info "Installing NVIDIA drivers and utilities..."
-        NVIDIA_PACKAGES=(
+        HARDWARE_PACKAGES+=(
             "akmod-nvidia"
-            "nvidia-settings"
-            "nvidia-utils"
-            "nvidia-driver-cuda"
+            "xorg-x11-drv-nvidia"
+            "xorg-x11-drv-nvidia-cuda"
+            "xorg-x11-drv-nvidia-settings"
         )
-        
-        # Use unified batch installation for all NVIDIA packages
-        install_packages_batch "dnf" "${NVIDIA_PACKAGES[@]}"
         ;;
-        
     "amd")
         print_info "Installing AMD drivers and utilities..."
-        AMD_PACKAGES=(
+        HARDWARE_PACKAGES+=(
             "mesa-vulkan-drivers"
             "vulkan-tools"
             "rocm-opencl-runtime"
         )
-        
-        # Use unified batch installation for all AMD packages
-        install_packages_batch "dnf" "${AMD_PACKAGES[@]}"
         ;;
-        
     "intel")
         print_info "Installing Intel graphics drivers and utilities..."
-        INTEL_PACKAGES=(
+        HARDWARE_PACKAGES+=(
             "mesa-vulkan-drivers"
             "vulkan-tools"
             "intel-media-driver"
         )
-        
-        # Use unified batch installation for all Intel packages
-        install_packages_batch "dnf" "${INTEL_PACKAGES[@]}"
+        ;;
+    *)
+        print_info "No dedicated GPU driver packages needed (vendor: ${GPU_VENDOR:-none})"
         ;;
 esac
 
-# Install general hardware utilities
-print_info "Installing general hardware utilities..."
-install_packages_batch "dnf" "lshw" "cpuid"
+install_packages_batch "dnf" "${HARDWARE_PACKAGES[@]}"
 
 print_success "Hardware detection and driver installation completed." 

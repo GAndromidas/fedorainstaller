@@ -85,10 +85,14 @@ if [ ${#de_remove_packages[@]} -gt 0 ]; then
     done
     
     if [ ${#packages_to_remove[@]} -gt 0 ]; then
-        if sudo $DNF_CMD remove -y "${packages_to_remove[@]}" 2>&1 | tee -a "$INSTALL_LOG"; then
+        # rc of the PIPELINE previously came from tee — removal failures
+        # printed "successfully". Capture and branch on dnf itself.
+        rm_out=$(sudo $DNF_CMD remove -y "${packages_to_remove[@]}" 2>&1)
+        if [ $? -eq 0 ]; then
             print_success "Removed ${#packages_to_remove[@]} packages successfully"
         else
-            print_warning "Some packages may not have been removed"
+            printf '%s\n' "$rm_out" >> "$INSTALL_LOG" 2>/dev/null || true
+            print_warning "Some packages may not have been removed (output logged)"
         fi
     else
         print_info "None of the specified packages are installed"
@@ -98,12 +102,20 @@ fi
 # Install DNF packages using unified batch installation
 if [ ${#dnf_packages[@]} -gt 0 ]; then
     print_info "Installing ${#dnf_packages[@]} DNF packages: ${dnf_packages[*]}"
-    
-    # Remove duplicates
-    dnf_packages=($(printf "%s\n" "${dnf_packages[@]}" | sort -u))
-    
+
+    # Remove duplicates — previously an unquoted $() re-splitting on
+    # whitespace would corrupt package names containing dashes/slashes.
+    _seen=()
+    _uniq=()
+    for _p in "${dnf_packages[@]}"; do
+        [[ ${_seen[$_p]:-} ]] && continue
+        _seen[$_p]=1
+        _uniq+=("$_p")
+    done
+    dnf_packages=("${_uniq[@]}")
+
     # Use unified batch installation with fallback
-    install_packages_batch "dnf" "${dnf_packages[@]}"
+    install_packages_batch "dnf" "${dnf_packages[@]}" || true
 else
     print_warning "No DNF packages to install for mode: $INSTALL_MODE"
 fi
@@ -115,8 +127,16 @@ if [ ${#flatpak_packages[@]} -gt 0 ]; then
     else
         print_info "Installing ${#flatpak_packages[@]} Flatpak packages: ${flatpak_packages[*]}"
         
-        # Remove duplicates
-        flatpak_packages=($(printf "%s\n" "${flatpak_packages[@]}" | sort -u))
+        # Remove duplicates — see the DNF block above for why this is a
+        # proper array dedupe instead of unquoted $(... | sort -u).
+        _seen=()
+        _uniq=()
+        for _p in "${flatpak_packages[@]}"; do
+            [[ ${_seen[$_p]:-} ]] && continue
+            _seen[$_p]=1
+            _uniq+=("$_p")
+        done
+        flatpak_packages=("${_uniq[@]}")
         
         # Ensure Flatpak daemon is running
         if ! flatpak ps >/dev/null 2>&1; then
@@ -129,7 +149,7 @@ if [ ${#flatpak_packages[@]} -gt 0 ]; then
         timeout 300 flatpak update --appstream 2>/dev/null || print_warning "Flatpak repository update timed out or failed, continuing..."
         
         # Use unified batch installation with fallback
-        install_packages_batch "flatpak" "${flatpak_packages[@]}"
+        install_packages_batch "flatpak" "${flatpak_packages[@]}" || true
     fi
 else
     print_warning "No Flatpak packages to install for mode: $INSTALL_MODE"

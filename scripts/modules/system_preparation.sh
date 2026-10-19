@@ -14,17 +14,27 @@ sudo grep -q '^keepcache=False' "$DNF_CONF" || echo "keepcache=False" | sudo tee
 print_success "DNF configuration updated successfully."
 
 # --- Enable RPM Fusion ---
-RELEASE=$(rpm -E %fedora)
-if ! sudo $DNF_CMD repolist | grep -q rpmfusion-free; then
+# rpm -E %fedora must resolve to a DEPLOYED version number (e.g. "41"); an
+# empty/odd result used to build malformed mirror URLs silently.
+RELEASE=$(rpm -E %fedora 2>/dev/null)
+if ! [[ "$RELEASE" =~ ^[0-9]+$ ]]; then
+  print_error "Could not determine Fedora release version — skipping RPM Fusion setup"
+elif ! sudo $DNF_CMD repolist | grep -q rpmfusion-free; then
   print_info "Enabling RPM Fusion repositories..."
   sudo $DNF_CMD install -y \
     "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$RELEASE.noarch.rpm" \
-    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$RELEASE.noarch.rpm"
+    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$RELEASE.noarch.rpm" \
+    || print_warning "RPM Fusion enablement failed — NVIDIA/steam packages will be unavailable"
 fi
 
 # --- Swap ffmpeg-free for full ffmpeg (game cutscenes fix) ---
+# Guarded: a failed swap must not pretend the step succeeded.
 print_info "Swapping ffmpeg-free for ffmpeg..."
-sudo $DNF_CMD swap -y ffmpeg-free ffmpeg --allowerasing
+if sudo $DNF_CMD swap -y ffmpeg-free ffmpeg --allowerasing 2>>"$INSTALL_LOG"; then
+  print_success "ffmpeg swapped in"
+else
+  print_warning "ffmpeg swap failed (logged) — free variant remains"
+fi
 
 # --- Install Helper Utilities ---
 print_info "Installing helper utilities..."

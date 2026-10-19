@@ -12,19 +12,23 @@ step "Configure bootloader"
 BOOTLOADER=$(detect_bootloader)
 ui_info "Detected bootloader: $BOOTLOADER"
 
-# Configure bootloader based on type
-configure_traditional_bootloader
+# Main entry at the bottom — top-level calls above the definitions would be
+# "command not found" (bash does not hoist functions), silently leaving
+# bootloader configuration unfinished while the success banner still prints.
+bootloader_config_main() {
+    configure_traditional_bootloader
 
-# Configure dual-boot with Windows if detected
-configure_windows_dual_boot
+    # Configure dual-boot with Windows if detected
+    configure_windows_dual_boot
 
-# Configure grub-btrfs for Timeshift snapshot menu entries
-configure_grub_btrfs
+    # Configure grub-btrfs for Timeshift snapshot menu entries
+    configure_grub_btrfs
 
-# Add kernel parameters for better boot experience
-add_kernel_parameters
+    # Add kernel parameters for better boot experience
+    add_kernel_parameters
 
-print_success "Bootloader configuration completed"
+    print_success "Bootloader configuration completed"
+}
 
 configure_traditional_bootloader() {
     case "$BOOTLOADER" in
@@ -102,16 +106,18 @@ configure_systemd_boot() {
 }
 
 configure_windows_dual_boot() {
-    # Detect Windows installation
+    # Detect Windows installation. NTFS anywhere is NOT proof of Windows
+    # (Linux boxes commonly carry NTFS data disks); treat a Windows Boot
+    # Manager NVRAM entry or the Microsoft EFI directory as the evidence.
     ui_info "Detecting Windows installation..."
     local windows_found=0
-    
-    if lsblk -f | grep -qi ntfs; then
+
+    if command -v efibootmgr >/dev/null 2>&1 && sudo efibootmgr 2>/dev/null | grep -qi "Windows Boot Manager"; then
         windows_found=1
     elif [ -d /boot/efi/EFI/Microsoft ]; then
         windows_found=1
     fi
-    
+
     if [ $windows_found -eq 0 ]; then
         ui_info "No Windows installation detected"
         return 0
@@ -155,7 +161,12 @@ configure_windows_dual_boot() {
 
 add_kernel_parameters() {
     ui_info "Adding kernel parameters"
-    
+
+    if [ "$BOOTLOADER" != "grub" ]; then
+        ui_info "Bootloader is $BOOTLOADER — no kernel parameter changes made"
+        return 0
+    fi
+
     if [ "$BOOTLOADER" = "grub" ]; then
         # GRUB systems use /etc/default/grub
         local grub_conf="/etc/default/grub"
@@ -166,12 +177,17 @@ add_kernel_parameters() {
         fi
         
         if [ -f "$grub_config" ]; then
-            if ! grep -q "^GRUB_CMDLINE_LINUX=" "$grub_config"; then
+            if ! grep -q '^GRUB_CMDLINE_LINUX=' "$grub_config"; then
                 echo 'GRUB_CMDLINE_LINUX="quiet"' | sudo tee -a "$grub_config" >/dev/null
             else
-                sudo sed -i 's/^GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX="\1 quiet"/' "$grub_config"
+                # Append only when 'quiet' is not already a whole word in the
+                # value — naive `s/.../\1 quiet/' accumulated "quiet quiet
+                # quiet…" on every rerun.
+                if ! grep -Eq '^GRUB_CMDLINE_LINUX=.*\bquiet\b' "$grub_config"; then
+                    sudo sed -i 's/^GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX="\1 quiet"/' "$grub_config"
+                fi
             fi
-            
+
             # Regenerate GRUB
             if [ -d /sys/firmware/efi ]; then
                 sudo grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg >/dev/null 2>&1
@@ -180,7 +196,7 @@ add_kernel_parameters() {
             fi
         fi
     fi
-    
+
     ui_success "Kernel parameters added"
 }
 
@@ -244,3 +260,4 @@ configure_grub_btrfs() {
     fi
     ui_success "GRUB updated with Timeshift snapshot entries"
 } 
+bootloader_config_main

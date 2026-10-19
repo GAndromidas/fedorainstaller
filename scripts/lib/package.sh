@@ -1,81 +1,29 @@
 #!/bin/bash
 set -uo pipefail
-
-# ============================================================================
-# Package library: DNF / Flatpak installation helpers.
-# install_packages_batch is the main entry point used by the step scripts;
-# it filters already-installed packages, tries a single batch command, and
-# falls back to per-package installation with error reporting.
-# ============================================================================
-
-# Check if package is installed
-is_package_installed() {
-    local manager="$1"
-    local pkg="$2"
-
+# One query for ALL candidates instead of one fork per package:
+#   dnf:     rpm -q accepts multiple names and prints the FOUND ones (one
+#            fork for the whole batch).
+#   flatpak: one `flatpak list --app` dump, membership by exact app id.
+# Callers must pass a non-empty list — guard your loops.
+PKG_INSTALLED_MAP=()
+populate_installed_map() {
+    local manager="$1"; shift
+    PKG_INSTALLED_MAP=()
+    local p
     case "$manager" in
         dnf)
-            rpm -q "$pkg" &>/dev/null
+            while IFS= read -r p; do PKG_INSTALLED_MAP["$p"]=1; done < <(rpm -q -- "$@" 2>/dev/null)
             ;;
         flatpak)
-            flatpak list 2>/dev/null | grep -q "$pkg"
+            command -v flatpak &>/dev/null || return 0
+            while IFS= read -r p; do PKG_INSTALLED_MAP["${p%% *}"]=1; done < <(flatpak list --app 2>/dev/null)
             ;;
     esac
 }
 
-# Install single package via DNF
-dnf_install_single() {
-    local pkg="$1"
-    local verbose="${2:-false}"
-
-    if [ "$verbose" = true ]; then
-        printf "${THEME_TEXT}Installing DNF package:${RESET} %-30s" "$pkg"
-    fi
-
-    local output
-    if output=$(sudo $DNF_CMD install -y "$pkg" 2>&1); then
-        [ "$verbose" = true ] && printf "${THEME_SUCCESS} ✓ Success${RESET}\n"
-        INSTALLED_PACKAGES+=("$pkg")
-        return 0
-    else
-        [ "$verbose" = true ] && printf "${THEME_ERROR} ✗ Failed${RESET}\n"
-        if [ "$verbose" = true ] || [[ "$output" == *"error:"* ]]; then
-            echo "$output" | sed 's/^/    /'
-        fi
-        FAILED_PACKAGES+=("$pkg")
-        return 1
-    fi
+pkg_installed_via_map() {
+    [[ -n "${PKG_INSTALLED_MAP[$1]:-}" ]]
 }
-
-# Install single package via Flatpak
-flatpak_install_single() {
-    local pkg="$1"
-    local verbose="${2:-false}"
-
-    if ! command -v flatpak &>/dev/null; then
-        log_error "Flatpak not found"
-        return 1
-    fi
-
-    if [ "$verbose" = true ]; then
-        printf "${THEME_TEXT}Installing Flatpak app:${RESET} %-30s" "$pkg"
-    fi
-
-    local output
-    if output=$(flatpak install -y flathub "$pkg" 2>&1); then
-        [ "$verbose" = true ] && printf "${THEME_SUCCESS} ✓ Success${RESET}\n"
-        INSTALLED_PACKAGES+=("$pkg")
-        return 0
-    else
-        [ "$verbose" = true ] && printf "${THEME_ERROR} ✗ Failed${RESET}\n"
-        if [ "$verbose" = true ] || [[ "$output" == *"error:"* ]]; then
-            echo "$output" | sed 's/^/    /'
-        fi
-        FAILED_PACKAGES+=("$pkg")
-        return 1
-    fi
-}
-
 # Unified package installation function
 # Parameters: $1 - Package manager type (dnf|flatpak), $@ - Packages to install
 # Returns: 0 on success, 1 if some packages failed
@@ -101,21 +49,14 @@ install_package_generic() {
 
     echo -e "${CYAN}Installing ${total} packages via ${manager_name}...${RESET}"
 
+    # Single-filter: one query for the whole list, no fork per package.
+    populate_installed_map "$pkg_manager" "${pkgs[@]}"
+
     for pkg in "${pkgs[@]}"; do
         ((current++))
 
         # Check if already installed
-        local already_installed=false
-        case "$pkg_manager" in
-            dnf)
-                rpm -q "$pkg" &>/dev/null && already_installed=true
-                ;;
-            flatpak)
-                flatpak list | grep -q "$pkg" &>/dev/null && already_installed=true
-                ;;
-        esac
-
-        if [ "$already_installed" = true ]; then
+        if pkg_installed_via_map "$pkg"; then
             continue
         fi
 
@@ -181,6 +122,11 @@ install_packages_batch() {
     local packages=("$@")
     local total=${#packages[@]}
 
+    # Number of packages this batch actually tried to install (after the
+    # already-installed filter). 0 = nothing pending → callers must not
+    # treat "no packages newly installed" as a failure on idempotent reruns.
+    BATCH_PENDING=0
+
     if [ $total -eq 0 ]; then
         ui_info "No packages to install"
         return 0
@@ -188,20 +134,13 @@ install_packages_batch() {
 
     ui_info "Installing ${total} packages via $pkg_manager (batch mode)..."
 
-    # Filter out already installed packages
+    # Filter out already installed packages — ONE query instead of a fork
+    # per package (N×rpm/flatpak pipelines dominated batch prep time on a
+    # first install).
+    populate_installed_map "$pkg_manager" "${packages[@]}"
     local packages_to_install=()
     for pkg in "${packages[@]}"; do
-        local already_installed=false
-        case "$pkg_manager" in
-            dnf)
-                rpm -q "$pkg" &>/dev/null && already_installed=true
-                ;;
-            flatpak)
-                flatpak list | grep -q "$pkg" &>/dev/null && already_installed=true
-                ;;
-        esac
-
-        if [ "$already_installed" = false ]; then
+        if ! pkg_installed_via_map "$pkg"; then
             packages_to_install+=("$pkg")
         fi
     done
@@ -211,6 +150,7 @@ install_packages_batch() {
         ui_info "All packages already installed"
         return 0
     fi
+    BATCH_PENDING=$filtered_total
 
     # Try batch install first for speed
     if [ "${DRY_RUN:-false}" = true ]; then
@@ -221,18 +161,23 @@ install_packages_batch() {
 
     case "$pkg_manager" in
         dnf)
-            if sudo $DNF_CMD install -y "${packages_to_install[@]}" >/dev/null 2>&1; then
+            local batch_out=""
+            if batch_out=$(sudo $DNF_CMD install -y "${packages_to_install[@]}" 2>&1); then
                 ui_success "All packages installed successfully in batch"
                 INSTALLED_PACKAGES+=("${packages_to_install[@]}")
                 return 0
             fi
+            # Batch failures must be diagnosable — never swallow dnf output.
+            { echo ""; echo "[$(date '+%F %T')] BATCH FAILURE (dnf) — fallback to per-package"; echo "$batch_out"; } >> "$INSTALL_LOG" 2>/dev/null || true
             ;;
         flatpak)
-            if flatpak install -y flathub "${packages_to_install[@]}" >/dev/null 2>&1; then
+            local batch_out=""
+            if batch_out=$(flatpak install -y flathub "${packages_to_install[@]}" 2>&1); then
                 ui_success "All packages installed successfully in batch"
                 INSTALLED_PACKAGES+=("${packages_to_install[@]}")
                 return 0
             fi
+            { echo ""; echo "[$(date '+%F %T')] BATCH FAILURE (flatpak) — fallback to per-app"; echo "$batch_out"; } >> "$INSTALL_LOG" 2>/dev/null || true
             ;;
     esac
 
@@ -240,22 +185,4 @@ install_packages_batch() {
     ui_warn "Batch installation failed, falling back to individual installation..."
     install_package_generic "$pkg_manager" "${packages_to_install[@]}"
     return $?
-}
-
-# Update the whole system (dnf upgrade, mirrors refreshed automatically by dnf)
-update_system() {
-    ui_info "Updating system packages..."
-    if sudo $DNF_CMD upgrade -y; then
-        ui_success "System updated successfully"
-    else
-        ui_error "System update failed"
-        return 1
-    fi
-}
-
-# Refresh package metadata before installing (mirrors what update_system does,
-# but only refreshes the cache — useful before a long batch install)
-preload_package_lists() {
-    ui_info "Preloading package lists..."
-    sudo $DNF_CMD makecache >>"$INSTALL_LOG" 2>&1 || true
 }

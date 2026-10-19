@@ -33,7 +33,45 @@ ok()   { printf "  ${GREEN}✓${RESET} %s\n" "$1"; PASS=$((PASS+1)); }
 warn() { printf "  ${YELLOW}⚠${RESET} %s\n" "$1"; WARN=$((WARN+1)); }
 bad()  { printf "  ${RED}✗${RESET} %s\n" "$1"; FAIL=$((FAIL+1)); }
 info() { [[ "$VERBOSE" == true ]] && printf "  ${MUTED}·${RESET} %s\n" "$1"; }
+# Neutral, always-visible note (not counted): avoids "empty section" look.
+note() { printf "  ${MUTED}·${RESET} %s\n" "$1"; }
 section() { printf "\n${BOLD}${BLUE}── %s ──${RESET}\n" "$1"; }
+
+# sshd PermitRootLogin policy check (sshd -T first; file-level fallback for
+# custom builds whose -T dump lacks the keyword entirely).
+check_sshd_policy() {
+  local dropin="/etc/ssh/sshd_config.d/00-fedorainstaller-hardening.conf"
+  if ! command -v sshd &>/dev/null; then
+    info "openssh-server not installed — skipping sshd policy check"
+    return
+  fi
+  local ssh_rc=0 prl ssh_t
+  ssh_t=$(sudo sshd -T 2>&1) || ssh_rc=$?
+  prl=$(awk '$1=="permitrootlogin" {print $2; exit}' <<< "$ssh_t")
+  case "${prl,,}" in
+    prohibit-password|no)
+      ok "sshd PermitRootLogin is hardened ($prl)"
+      ;;
+    "")
+      if [[ "$ssh_rc" -ne 0 ]]; then
+        bad "sshd -T failed (rc=$ssh_rc): ${ssh_t:0:160}"
+      elif [[ -f "$dropin" ]] && grep -qi '^[[:space:]]*PermitRootLogin[[:space:]]\+prohibit-password' "$dropin"; then
+        local incl
+        incl=$(grep -nE '^[[:space:]]*Include[[:space:]].*sshd_config\.d' /etc/ssh/sshd_config 2>/dev/null | head -1 | cut -d: -f1)
+        if [[ -n "$incl" ]] && awk -v n="$incl" 'NR>=n{exit 0} /^[[:space:]]*#/{next} /^[[:space:]]*$/{next} {k=tolower($1); if(k~/^(permitrootlogin)$/) exit 1}' /etc/ssh/sshd_config 2>/dev/null; then
+          ok "sshd hardening verified at file level (sshd -T dump lacks PermitRootLogin; drop-in + Include position OK)"
+        else
+          warn "sshd -T dump lacks PermitRootLogin and Include position is not verified — inspect $dropin"
+        fi
+      else
+        warn "sshd -T dump lacks PermitRootLogin and no fedorainstaller drop-in found — verify manually"
+      fi
+      ;;
+    *)
+      bad "sshd PermitRootLogin is '$prl' (want prohibit-password or stricter) — check sshd_config.d drop-in order"
+      ;;
+  esac
+}
 
 section "Boot"
 
@@ -73,7 +111,11 @@ section "CPU & GPU drivers"
 cpu_vendor="unknown"
 grep -qi "GenuineIntel" /proc/cpuinfo 2>/dev/null && cpu_vendor="intel"
 grep -qi "AuthenticAMD" /proc/cpuinfo 2>/dev/null && cpu_vendor="amd"
-ok "CPU vendor: ${cpu_vendor}"
+if [[ "${cpu_vendor:-unknown}" != "unknown" ]]; then
+  ok "CPU vendor: ${cpu_vendor}"
+else
+  warn "CPU vendor could not be determined — CPU driver selection may have been skipped"
+fi
 
 if [[ "$cpu_vendor" == "amd" ]] && [ -d /sys/devices/system/cpu/amd_pstate ]; then
   ok "amd_pstate driver active"
@@ -147,6 +189,24 @@ fi
 
 section "Security"
 
+# boot state of sshd: enabled + running + policy (check at install time the
+# installer already hardens it; here we confirm the reboot kept it so).
+if command -v sshd &>/dev/null; then
+  if systemctl is-enabled --quiet sshd.service 2>/dev/null; then
+    ok "sshd.service enabled"
+  else
+    warn "sshd.service not enabled — system may be unreachable after reboot"
+  fi
+  if systemctl is-active --quiet sshd.service 2>/dev/null; then
+    ok "sshd.service running"
+  else
+    bad "sshd.service not running"
+  fi
+  check_sshd_policy
+else
+  info "openssh-server not installed"
+fi
+
 if command -v firewall-cmd &>/dev/null; then
   if sudo firewall-cmd --state 2>/dev/null | grep -q "running"; then
     ok "Firewalld is active"
@@ -175,7 +235,7 @@ if systemctl is-active --quiet fail2ban 2>/dev/null; then
   else
     bad "fail2ban is running but reports zero active jails — check 'sudo fail2ban-client status' and /etc/fail2ban/jail.local"
   fi
-elif systemctl list-unit-files fail2ban.service &>/dev/null; then
+elif rpm -q fail2ban &>/dev/null; then
   bad "fail2ban is installed but not running"
 else
   info "fail2ban not installed — skipping"
@@ -199,9 +259,9 @@ if command -v ethtool &>/dev/null; then
       fi
     fi
   done
-  [[ "$wol_checked" == false ]] && info "No Wake-on-LAN-capable wired interface found — expected on laptops/Wi-Fi-only systems"
+  [[ "$wol_checked" == false ]] && note "No Wake-on-LAN-capable wired interface found (expected on VMs / Wi-Fi-only systems) — nothing to verify"
 else
-  info "ethtool not available, skipping Wake-on-LAN check"
+  note "ethtool not available — skipping Wake-on-LAN check"
 fi
 
 section "Maintenance timers"
@@ -213,6 +273,8 @@ else
 fi
 if systemctl is-enabled --quiet fstrim.timer 2>/dev/null; then
   ok "fstrim.timer enabled (periodic SSD TRIM)"
+elif lsblk -dno ROTA 2>/dev/null | grep -q '^0$'; then
+  warn "fstrim.timer not enabled but SSDs are present — periodic TRIM recommended"
 else
   info "fstrim.timer not enabled (expected on HDD-only systems)"
 fi

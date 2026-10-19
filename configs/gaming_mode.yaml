@@ -11,8 +11,6 @@ dnf:
       description: "Vulkan/OpenGL overlay for monitoring FPS and more"
     - name: "steam"
       description: "Digital distribution platform for games"
-    - name: "wine"
-      description: "Compatibility layer for running Windows applications"
 
 # Flatpak applications for gaming
 flatpak:

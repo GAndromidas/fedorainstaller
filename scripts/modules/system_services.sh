@@ -159,7 +159,9 @@ configure_user_groups() {
     
     for group in "${groups_to_add[@]}";
     do
-        if ! groups "$current_user" | grep -q "\\b${group}\\b"; then
+        # `id -nG` is the reliable membership check; `groups | grep -q \b`
+        # breaks on substrings/words like "video" vs "realtime_video".
+        if ! id -nG "$current_user" 2>/dev/null | grep -qw "$group"; then
             ui_info "Adding user to $group group..."
             sudo usermod -aG "$group" "$current_user" >/dev/null 2>&1
             ui_success "Added to $group group"
@@ -194,7 +196,9 @@ enable_power_management() {
         # Enable TLP (it conflicts with power-profiles-daemon, so disable that first)
         sudo systemctl disable --now power-profiles-daemon >/dev/null 2>&1
         sudo systemctl enable --now tlp >/dev/null 2>&1
-        sudo systemctl enable --now tlp-sleep >/dev/null 2>&1
+        # NOTE: tlp-sleep no longer ships as a separate unit on modern Fedora
+        # (hibernate/suspend handling is built into tlp itself); enabling it
+        # was a permanent silent no-op.
         ui_success "TLP enabled for laptop power management"
     fi
 }
@@ -237,9 +241,12 @@ detect_enabled_services() {
     fi
 
     # Keep only services that actually ship a unit on this system.
-    local available=()
+    # ONE full dump filtered in-process instead of one list-unit-files fork
+    # per service (N full-dump forks per run).
+    local available=() unit_cache
+    unit_cache=$(systemctl list-unit-files 2>/dev/null)
     for svc in "${services[@]}"; do
-        if systemctl list-unit-files | grep -q "^${svc}"; then
+        if grep -q "^${svc}" <<<"$unit_cache"; then
             available+=("$svc")
         fi
     done
@@ -254,6 +261,156 @@ install_sshd() {
     fi
 }
 
+sshd_hardened_enough() {
+    local v="${1,,}"
+    [[ "$v" == "prohibit-password" || "$v" == "no" ]]
+}
+
+# File-level hardening gate — used when the sshd -T dump can't be trusted.
+# Conditions sshd itself would resolve: our 00-* drop-in exists with
+# PermitRootLogin prohibit-password AND the sshd_config.d Include is the
+# first managed-key-capable line in the main sshd_config (first-obtained
+# value wins). sshd -t has already passed when this is consulted.
+# $1 = drop-in path.
+_sshd_file_level_hardened() {
+    local dropin="${1:-}"
+    [[ -n "$dropin" ]] || return 1
+    sudo test -f "$dropin" 2>/dev/null || return 1
+    sudo grep -qi '^[[:space:]]*PermitRootLogin[[:space:]]\+prohibit-password' "$dropin" 2>/dev/null || return 1
+    local main="${SSHD_MAIN_CONFIG:-/etc/ssh/sshd_config}"
+    [[ -s "$main" ]] || return 1
+    local inc_line
+    inc_line=$(sudo grep -nE '^[[:space:]]*Include[[:space:]].*sshd_config\.d' "$main" 2>/dev/null | head -1 | cut -d: -f1)
+    [[ -n "$inc_line" ]] || return 1
+    # No managed key above the Include — otherwise that directive, not the
+    # drop-in, wins the first-obtained race.
+    sudo awk -v n="$inc_line" '
+        NR >= n { exit 0 }
+        /^[[:space:]]*#/ { next }
+        /^[[:space:]]*$/ { next }
+        { k = tolower($1); if (k ~ /^(permitrootlogin|maxauthtries|logingracetime|maxstartups|clientaliveinterval|clientalivecountmax)$/) exit 1 }
+      ' "$main" 2>/dev/null
+}
+
+# Make sure the sshd_config.d Include is present and effectively first.
+harden_sshd_restore_include() {
+    local main="${SSHD_MAIN_CONFIG:-/etc/ssh/sshd_config}"
+    local include_re='^[[:space:]]*Include[[:space:]].*sshd_config\.d'
+    local first_include
+    local _offending=""
+    first_include=$(sudo grep -nE "$include_re" "$main" 2>/dev/null | head -1 | cut -d: -f1 || echo "")
+    if [[ -n "$first_include" ]]; then
+        # Include exists — is a managed key above it (and therefore winning)?
+        # awk exits 0 when the Include is effectively first (clean).
+        if sudo awk -v n="$first_include" '
+            NR >= n { exit 0 }
+            /^[[:space:]]*#/ { next }
+            /^[[:space:]]*$/ { next }
+            { k = tolower($1); if (k ~ /^(permitrootlogin|maxauthtries|logingracetime|maxstartups|clientaliveinterval|clientalivecountmax)$/) exit 1 }
+          ' "$main" 2>/dev/null; then
+            ui_info "Include for sshd_config.d already present and first in $main"
+            return 0
+        fi
+        ui_warn "Managed SSH setting precedes Include in $main (first value wins) — moving Include to the top"
+        _offending=$(sudo awk -v n="$first_include" '
+            NR >= n { exit }
+            /^[[:space:]]*#/ { next }
+            /^[[:space:]]*$/ { next }
+            { k = tolower($1); if (k ~ /^(permitrootlogin|maxauthtries|logingracetime|maxstartups|clientaliveinterval|clientalivecountmax)$/) print NR ": " $0 }
+          ' "$main" 2>/dev/null || true)
+        [[ -n "$_offending" ]] && log_to_file "Managed keys above Include (line $first_include): ${_offending//$'\n'/ ; }"
+    else
+        ui_warn "No Include for sshd_config.d in $main — adding it at the top"
+    fi
+    sudo cp "$main" "${main}.backup.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || {
+        ui_warn "Failed to back up $main — leaving sshd_config untouched"
+        return 1
+    }
+    local tmp
+    tmp=$(mktemp /tmp/sshd_config.XXXXXX) || return 1
+    {
+        echo "# Added by fedorainstaller — enables sshd_config.d drop-ins (managed)"
+        echo "Include /etc/ssh/sshd_config.d/*.conf"
+        echo ""
+        sudo grep -vE "$include_re" "$main" 2>/dev/null
+    } > "$tmp" || { rm -f "$tmp"; return 1; }
+    if ! sudo cp "$tmp" "$main" 2>/dev/null; then
+        ui_warn "Failed to write $main — leaving sshd_config untouched"
+        rm -f "$tmp"
+        return 1
+    fi
+    rm -f "$tmp"
+    if sudo sshd -t 2>/dev/null; then
+        ui_success "Include in $main fixed — drop-in should now be active"
+        return 0
+    fi
+    ui_warn "sshd config test failed after Include fix — rolling back"
+    local latest_backup
+    latest_backup=$(ls -t "${main}.backup."* 2>/dev/null | head -1 || true)
+    [[ -n "$latest_backup" ]] && sudo cp "$latest_backup" "$main" 2>/dev/null || true
+    return 1
+}
+
+# Safe SSH hardening: root password login off, key auth unaffected.
+harden_sshd() {
+    step "Applying safe SSH hardening"
+    install_sshd
+
+    local dropin_dir="/etc/ssh/sshd_config.d"
+    local dropin="$dropin_dir/00-fedorainstaller-hardening.conf"
+
+    if [ "${DRY_RUN:-false}" = true ]; then
+        ui_info "Dry-run: would write $dropin (PermitRootLogin prohibit-password) and reload sshd"
+        return 0
+    fi
+
+    sudo mkdir -p "$dropin_dir"
+    if [ -f "$dropin" ]; then
+        sudo sed -i 's/^\(PermitRootLogin\).*/\1 prohibit-password/' "$dropin"
+    else
+        echo "# Managed by fedorainstaller — safe-by-default root SSH policy" | sudo tee "$dropin" >/dev/null
+        echo "PermitRootLogin prohibit-password" | sudo tee -a "$dropin" >/dev/null
+    fi
+
+    if ! sudo sshd -t 2>/dev/null; then
+        ui_error "sshd -t failed after writing $dropin — not reloading sshd"
+        return 1
+    fi
+
+    local effective
+    effective=$(sudo sshd -T 2>/dev/null | awk '$1=="permitrootlogin" {print $2; exit}' || true)
+    if sshd_hardened_enough "$effective"; then
+        sudo systemctl reload sshd.service 2>/dev/null || sudo systemctl reload sshd 2>/dev/null || true
+        ui_success "SSH hardening applied and reloaded (root password login off, key auth unaffected)"
+        return 0
+    fi
+    if ! harden_sshd_restore_include; then
+        ui_warn "Include repair failed — hardening may be inert until fixed"
+        return 0
+    fi
+    effective=$(sudo sshd -T 2>/dev/null | awk '$1=="permitrootlogin" {print $2; exit}' || true)
+    if ! sshd_hardened_enough "$effective"; then
+        # Deep-dive before deciding: field experience shows sshd -T can exit
+        # 0 with NO permitrootlogin line in its dump at all (custom builds).
+        local _t_out="" _t_rc=0 _t_prl=""
+        _t_out=$(sudo sshd -T 2>/dev/null) || _t_rc=$?
+        _t_prl=$(awk '$1=="permitrootlogin" {print; exit}' <<< "$_t_out")
+        log_to_file "sshd -T rc=$_t_rc; dump ${#_t_out} bytes; ${_t_prl:-no permitrootlogin line in output}"
+        if _sshd_file_level_hardened "$dropin"; then
+            ui_info "sshd -T dump lacks PermitRootLogin (probe inconclusive) — hardening verified at file level (drop-in + Include position OK)"
+        else
+            ui_warn "SSH hardening still not in effect (sshd -T reports PermitRootLogin '${effective:-<none>}') — leaving $dropin in place"
+            return 0
+        fi
+    fi
+
+    if sudo systemctl reload sshd.service 2>/dev/null || sudo systemctl reload sshd 2>/dev/null; then
+        ui_success "SSH hardening applied and reloaded (root password login off, key auth unaffected)"
+    else
+        ui_warn "Hardening written but sshd reload failed — takes effect on next restart"
+    fi
+}
+
 # Enable all detected services automatically. sshd is always installed and
 # enabled so the machine stays reachable out of the box; KDE Connect is
 # enabled automatically whenever it is found (RPM or Flatpak).
@@ -263,6 +420,9 @@ enable_essential_services() {
     # SSH server is always installed so the system is reachable out of the box,
     # regardless of the chosen installation mode.
     install_sshd
+
+    # Safe-by-default hardening right after the server is in place.
+    harden_sshd
 
     # Enable every detected service: sshd always, plus bluetooth, CUPS, cronie,
     # fstrim (SSDs) and KDE Connect whenever their package is present.

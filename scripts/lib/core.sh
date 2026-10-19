@@ -65,55 +65,71 @@ log_to_file() {
     echo "$message" >> "$INSTALL_LOG" 2>/dev/null || true
 }
 
-# Echo (with escapes) and append to the log
-log() {
-    echo -e "$1" | tee -a "$INSTALL_LOG"
+# Append a raw line to the installation log — printf %(...)T formatting via
+# the shell builtin: zero `date` forks; log_to_file fires for every message.
+log_to_file() {
+    local message="${1:-}"
+    [[ -n "$message" ]] || return 0
+    printf '[%(%Y-%m-%d %H:%M:%S)T] %s\n' -1 "$message" >> "$INSTALL_LOG" 2>/dev/null || true
 }
 
-print_info()    { echo -e "\n${BLUE}[INFO] $1${RESET}" | tee -a "$INSTALL_LOG"; }
-print_success() { echo -e "\n${GREEN}[SUCCESS] $1${RESET}" | tee -a "$INSTALL_LOG"; }
-print_warning() { echo -e "\n${YELLOW}[WARNING] $1${RESET}" | tee -a "$INSTALL_LOG"; }
-print_error()   { echo -e "\n${RED}[ERROR] $1${RESET}" | tee -a "$INSTALL_LOG"; ERRORS+=("$1"); }
+# stdout discipline shared by ALL messaging helpers:
+#   - colored emit only when stdout is a real TTY (checked at emit time, not
+#     load time — install phases redirect stdout mid-run);
+#   - plain text when piped/redirected — INSTALL_LOG must stay ANSI-free;
+#   - the plain text is additionally appended to INSTALL_LOG, timestamped.
+# (The old `echo -e COLOR | tee -a` helpers put raw escapes into the log
+# whenever colors had been enabled at load.)
+__emit() {
+    local color="${1:-}"
+    local plain="${2:-}"
+    log_to_file "$plain"
+    if [[ -t 1 ]]; then
+        printf '%b\n' "${color}${plain}${RESET}"
+    else
+        printf '%s\n' "$plain"
+    fi
+}
+
+log() { __emit "" "$1"; }
+
+print_info()    { __emit "$BLUE"    "[INFO] $1"; }
+print_success() { __emit "$GREEN"   "[SUCCESS] $1"; }
+print_warning() { __emit "$YELLOW"  "[WARNING] $1"; }
+print_error()   { __emit "$RED"     "[ERROR] $1"; ERRORS+=("$1"); }
 
 # Step counter/header (used by step scripts)
 step() {
     local msg="$1"
-    echo -e "\n${BLUE}[$CURRENT_STEP/$TOTAL_STEPS] $msg${RESET}" | tee -a "$INSTALL_LOG"
-    log_to_file "Step $CURRENT_STEP: $msg"
+    __emit "$BLUE" "[$CURRENT_STEP/$TOTAL_STEPS] $msg"
     ((CURRENT_STEP++))
 }
 
 # Log success/warning/error/info (console + log file)
 log_success() {
-    local message="$1"
+    local message="${1:-}"
     local context="${2:-}"
-    echo -e "${GREEN}$message${RESET}" | tee -a "$INSTALL_LOG"
-    if [ -n "$context" ]; then
-        echo -e "${CYAN}  Details: $context${RESET}" | tee -a "$INSTALL_LOG"
-    fi
+    __emit "$GREEN" "$message"
+    [ -n "$context" ] && __emit "$CYAN" "  Details: $context"
 }
 
 log_warning() {
-    local message="$1"
+    local message="${1:-}"
     local context="${2:-}"
-    echo -e "${YELLOW}! $message${RESET}" | tee -a "$INSTALL_LOG"
-    if [ -n "$context" ]; then
-        echo -e "  Note: $context" | tee -a "$INSTALL_LOG"
-    fi
+    __emit "$YELLOW" "! $message"
+    [ -n "$context" ] && __emit "" "  Note: $context"
 }
 
 log_error() {
-    local message="$1"
+    local message="${1:-}"
     local hint="${2:-}"
-    echo -e "${RED}$message${RESET}" | tee -a "$INSTALL_LOG"
-    if [ -n "$hint" ]; then
-        echo -e "  Tip: $hint" | tee -a "$INSTALL_LOG"
-    fi
+    __emit "$RED" "$message"
+    [ -n "$hint" ] && __emit "" "  Tip: $hint"
     ERRORS+=("$message")
 }
 
 log_info() {
-    echo -e "${CYAN}$1${RESET}" | tee -a "$INSTALL_LOG"
+    __emit "$CYAN" "$1"
 }
 
 # Debug message (only shown in verbose mode)
@@ -121,7 +137,11 @@ log_debug() {
     local message="$1"
     local detail="${2:-}"
     if [ "${VERBOSE:-false}" = true ]; then
-        echo -e "${THEME_MUTED}[DEBUG] $message${RESET}"
+        if [[ -t 1 ]]; then
+            printf '\n%b\n' "${THEME_MUTED}[DEBUG] $message${RESET}"
+        else
+            printf '\n[DEBUG] %s\n' "$message"
+        fi
         log_to_file "DEBUG: $message"
         if [ -n "$detail" ]; then
             log_to_file "  DETAIL: $detail"
@@ -148,26 +168,5 @@ format_time() {
         local hours=$((seconds / 3600))
         local minutes=$(((seconds % 3600) / 60))
         echo "${hours}h ${minutes}m"
-    fi
-}
-
-# Performance tracking (uses INSTALLATION_START_TIME, set by install.sh)
-log_performance() {
-    local step_name="$1"
-    local current_time=$(date +%s)
-    local elapsed=$((current_time - INSTALLATION_START_TIME))
-    local minutes=$((elapsed / 60))
-    local seconds=$((elapsed % 60))
-
-    # Special formatting for total installation time
-    if [[ "$step_name" == "Total installation time" ]]; then
-        echo -e "\n${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
-        echo -e "${CYAN}⏱️  INSTALLATION TIME SUMMARY${RESET}"
-        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}"
-        echo -e "${GREEN}🎯 Total Installation Time: ${YELLOW}${minutes}m ${seconds}s${RESET}"
-        echo -e "${CYAN}📊 Total Seconds: ${YELLOW}${elapsed}s${RESET}"
-        echo -e "${YELLOW}═══════════════════════════════════════════════════════════════${RESET}\n"
-    else
-        echo -e "${CYAN}$step_name completed in ${minutes}m ${seconds}s (${elapsed}s)${RESET}"
     fi
 }

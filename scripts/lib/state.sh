@@ -41,6 +41,21 @@ state_write() {
     ) 200>>"$STATE_FILE" 2>/dev/null
 }
 
+# Remove one exact line from the state file under the same exclusive lock.
+# (state.sh:146 previously appended FAILED: lines bypassing this lock.)
+state_remove_line() {
+    local line="$1"
+    [ -f "$STATE_FILE" ] || return 0
+    local tmp
+    tmp=$(mktemp "${STATE_FILE}.tmp.XXXXXX") || return 1
+    (
+        flock -x 200
+        grep -vFx "$line" "$STATE_FILE" > "$tmp" || true   # grep rc1 when all lines removed — not an error
+        mv -f "$tmp" "$STATE_FILE"
+    ) 200>>"$STATE_FILE" 2>/dev/null
+    rm -f "$tmp" 2>/dev/null || true
+}
+
 # Mark step with status (completed/skipped/failed)
 mark_step_complete_with_progress() {
     # Preview runs must never mutate persistent resume state.
@@ -61,6 +76,15 @@ mark_step_complete_with_progress() {
         completed|skipped|failed) state_write "${status^^}: $step_name" ;;
         *) log_error "Invalid state '$status' for step '$step_name'"; return 1 ;;
     esac
+
+    # Per-step cleanup of a stale FAILED marker when a step retried and now
+    # succeeded (or was explicitly skipped): without this, a failed attempt
+    # from an interrupted earlier run would keep reporting the whole install
+    # as failed. state_write may have appended BOTH failed and completed
+    # lines for the same step; the failed one is stale.
+    if [ "$status" = "completed" ] || [ "$status" = "skipped" ]; then
+        state_remove_line "FAILED: $step_name"
+    fi
 }
 
 # Check if step was completed (checks for "COMPLETED: stepname" format)
@@ -81,10 +105,6 @@ is_step_done() {
 
 state_has_failure() {
     [ -f "$STATE_FILE" ] && grep -q '^FAILED:' "$STATE_FILE"
-}
-
-state_clear() {
-    rm -f "$STATE_FILE" 2>/dev/null || true
 }
 
 # Strip FAILED: entries after a run reaches the end successfully — keeps
@@ -143,7 +163,7 @@ cleanup_on_error() {
 
         # Save error state (no bogus line number — step-level FAILED lines are precise)
         if [[ "${DRY_RUN:-false}" != true ]]; then
-            echo "FAILED: Installation ended (exit code: $exit_code)${context:+ — $context}" >> "$STATE_FILE"
+            state_write "FAILED: Installation ended (exit code: $exit_code)${context:+ — $context}"
         fi
     fi
 }
@@ -223,7 +243,8 @@ prompt_reboot() {
         echo -e "${YELLOW}It's strongly recommended to reboot your system now.\n${RESET}"
 
         if supports_gum; then
-            if gum confirm "Reboot now?" --default=true; then
+            # tty-pinned: gum must draw on the terminal, not the log/redir.
+            if gum confirm "Reboot now?" --default=true </dev/tty >/dev/tty 2>/dev/tty; then
                 reboot_now=true
             else
                 reboot_now=false
@@ -241,9 +262,8 @@ prompt_reboot() {
         if [ "$reboot_now" = true ]; then
             echo -e "\n${CYAN}Rebooting...${RESET}\n"
             delete_fedorainstaller_files
-            if command -v figlet >/dev/null; then
-                sudo $DNF_CMD remove -y figlet >/dev/null 2>&1
-            fi
+            # NOTE: figlet was never installed by this installer — the
+            # dangling `dnf remove figlet` was leftover from the Arch fork.
             sudo reboot
         else
             echo -e "\n${YELLOW}Reboot skipped. You can reboot manually at any time using \`sudo reboot\`.${RESET}\n"

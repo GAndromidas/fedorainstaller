@@ -14,19 +14,12 @@ supports_gum() {
 
 # ===== Basic output helpers (console + log file) =====
 
-ui_info() { echo -e "${BLUE}$1${RESET}" | tee -a "$INSTALL_LOG"; }
-ui_success() { echo -e "${GREEN}$1${RESET}" | tee -a "$INSTALL_LOG"; }
-ui_warn() { echo -e "${YELLOW}$1${RESET}" | tee -a "$INSTALL_LOG"; }
-ui_error() { echo -e "${RED}$1${RESET}" | tee -a "$INSTALL_LOG"; }
-
-# ===== Banners =====
-
-simple_banner() {
-    local title="$1"
-    echo -e "${CYAN}\n============================================================${RESET}"
-    echo -e "${CYAN}========== $title ==========${RESET}"
-    echo -e "${CYAN}============================================================${RESET}"
-}
+# stdout discipline lives in core.sh (__emit): colored on a real TTY, plain
+# when piped/redirected, and the plain text appended to INSTALL_LOG.
+ui_info()    { __emit "$BLUE"    "$1"; }
+ui_success() { __emit "$GREEN"   "$1"; }
+ui_warn()    { __emit "$YELLOW"  "$1"; }
+ui_error()   { __emit "$RED"     "$1"; }
 
 fedora_ascii() {
     echo -e "${CYAN}"
@@ -40,31 +33,6 @@ fedora_ascii() {
 EOF
     echo -e "${RESET}"
 }
-
-# ===== Input helpers =====
-
-# Gum-based input with fallback
-gum_input() {
-    local prompt="$1"
-    local default="${2:-}"
-
-    if supports_gum; then
-        if [ -n "$default" ]; then
-            gum input --prompt "$prompt" --value "$default"
-        else
-            gum input --prompt "$prompt"
-        fi
-    else
-        if [ -n "$default" ]; then
-            read -r -p "$prompt [$default]: " response
-            echo "${response:-$default}"
-        else
-            read -r -p "$prompt: " response
-            echo "$response"
-        fi
-    fi
-}
-
 # Gum-based confirm with fallback
 gum_confirm() {
     local prompt="$1"
@@ -77,27 +45,34 @@ gum_confirm() {
     fi
 
     if supports_gum; then
-        if [ "$default" = "true" ]; then
-            gum confirm --default=true "$prompt"
-        else
-            gum confirm "$prompt"
+        # Draw on the controlling terminal: when stdout is redirected
+        # (dashboard runs it) the confirm would be invisible, and gum's
+        # non-interactive path silently answers the default — auto-accepting
+        # optional installs the user never saw.
+        if exec 3</dev/tty 2>/dev/null; then
+            exec 3<&-
+            if [ "$default" = "true" ]; then
+                gum confirm --default=true "$prompt" </dev/tty >/dev/tty 2>/dev/tty
+            else
+                gum confirm --default=false "$prompt" </dev/tty >/dev/tty 2>/dev/tty
+            fi
+            return $?
         fi
+        # No controlling terminal at all: fall back to the env default
+        # and log it, mirroring AUTO_CONFIRM behavior.
+        log_to_file "Non-interactive shell: using default ($default) for confirm: $prompt"
+        [[ "$default" == true ]] && return 0 || return 1
     else
         local default_display="[y/N]"
         if [ "$default" = "true" ]; then
             default_display="[Y/n]"
         fi
         while true; do
-            read -r -p "$prompt $default_display: " response
+            read -r -p "$prompt $default_display: " response || return 1
             case "${response,,}" in
                 y|yes) return 0 ;;
-                n|no|"")
-                    if [ "$default" = "true" ]; then
-                        return 0
-                    else
-                        return 1
-                    fi
-                    ;;
+                n|no) return 1 ;;
+                "") [ "$default" = "true" ] && return 0 || return 1 ;;
             esac
         done
     fi
@@ -265,76 +240,6 @@ show_traditional_menu() {
         esac
     done
 }
-
-# ===== Generic gum UI helpers (unified menu, multiselect, spinner, etc.) =====
-
-# Unified menu function with arrow navigation
-ui_menu() {
-    local title="$1"
-    local description="${2:-}"
-    shift 2
-    local options=("$@")
-
-    if supports_gum; then
-        if [ -n "$description" ]; then
-            gum style --foreground "$GUM_WARN" --margin "1 0" "$description"
-            echo ""
-        fi
-        gum choose --header="$title" --cursor.foreground "$GUM_PRIMARY" --selected.foreground "$GUM_PRIMARY" "${options[@]}"
-    else
-        echo ""
-        echo -e "${THEME_HEADER}$title${RESET}"
-        if [ -n "$description" ]; then
-            echo -e "${THEME_MUTED}$description${RESET}"
-        fi
-        echo ""
-        local i=1
-        for opt in "${options[@]}"; do
-            echo -e "  ${THEME_SECONDARY}$i)${RESET} $opt"
-            ((i++))
-        done
-        echo ""
-        local selection
-        while true; do
-            read -r -p "$(echo -e "${THEME_SECONDARY}Select option [1-$((i-1))]: ${RESET}")" selection
-            if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le "$((i-1))" ]; then
-                echo "${options[$((selection-1))]}"
-                return 0
-            fi
-            echo -e "${THEME_ERROR}Invalid selection. Try again.${RESET}"
-        done
-    fi
-}
-
-# Multi-select menu for custom packages
-ui_multiselect() {
-    local title="$1"
-    shift
-    local options=("$@")
-
-    if supports_gum; then
-        gum choose --header="$title" --no-limit --cursor.foreground "$GUM_PRIMARY" --selected.foreground "$GUM_PRIMARY" "${options[@]}"
-    else
-        echo ""
-        echo -e "${THEME_HEADER}$title${RESET}"
-        echo -e "${THEME_MUTED}(Enter numbers space-separated)${RESET}"
-        echo ""
-        local i=1
-        for opt in "${options[@]}"; do
-            echo -e "  [ ] $i) $opt"
-            ((i++))
-        done
-        echo ""
-        local selection
-        read -r -p "$(echo -e "${THEME_SECONDARY}Enter numbers (space-separated): ${RESET}")" selection
-        for num in $selection; do
-            if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le "$((i-1))" ]; then
-                echo "${options[$((num-1))]}"
-            fi
-        done
-    fi
-}
-
 # Confirmation dialog
 ui_confirm() {
     local question="$1"
@@ -379,45 +284,6 @@ ui_confirm() {
         done
     fi
 }
-
-# Progress spinner for long operations
-ui_spinner() {
-    local message="$1"
-    shift
-    local command=("$@")
-
-    if supports_gum; then
-        gum spin --spinner dot --title="$message" -- "${command[@]}"
-    else
-        echo -e "${THEME_TEXT}$message...${RESET}"
-        "${command[@]}"
-    fi
-}
-
-# Progress bar for batch operations
-ui_progress() {
-    local total="$1"
-    local current="$2"
-    local message="$3"
-
-    if supports_gum; then
-        local percent=$((current * 100 / total))
-        gum format --template "progress" \
-            --field "value:$percent" \
-            --field "message:$message" \
-            <<< "$message"
-    else
-        local bar_width=40
-        local filled=$((current * bar_width / total))
-        local empty=$((bar_width - filled))
-        printf "\r${THEME_SECONDARY}%s${RESET} [%s%s] %d/%d" \
-            "$message" \
-            "$(printf '#%.0s' $(seq 1 $filled))" \
-            "$(printf ' %.0s' $(seq 1 $empty))" \
-            "$current" "$total"
-    fi
-}
-
 # Styled header with bordered box
 ui_header() {
     local title="$1"
@@ -430,32 +296,4 @@ ui_header() {
         echo -e "${THEME_BORDER}+$(printf '%*s' $(($(tput cols 2>/dev/null || echo 80) - 2)) '' | tr ' ' '-')+${RESET}"
     fi
     echo ""
-}
-
-# Input prompt
-ui_input() {
-    local prompt="$1"
-    local default="${2:-}"
-
-    if supports_gum; then
-        gum input --prompt="$prompt" --prompt.foreground "$GUM_PRIMARY" --value="$default"
-    else
-        local response
-        read -r -p "$(echo -e "${THEME_SECONDARY}${prompt}${RESET}")" response
-        echo "${response:-$default}"
-    fi
-}
-
-# Password input
-ui_password() {
-    local prompt="$1"
-
-    if supports_gum; then
-        gum input --password --prompt="$prompt" --prompt.foreground "$GUM_PRIMARY"
-    else
-        local response
-        read -r -s -p "$(echo -e "${THEME_SECONDARY}${prompt}${RESET}")" response
-        echo ""
-        echo "$response"
-    fi
 }

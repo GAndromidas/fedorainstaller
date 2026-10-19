@@ -27,7 +27,7 @@ read_yaml_packages() {
     fi
 
     local yq_output
-    yq_output=$(yq -r "$yaml_path[].name" "$yaml_file" 2>/dev/null)
+    yq_output=$(yq -r "$yaml_path"'[].name' "$yaml_file" 2>/dev/null)
 
     if [ $? -eq 0 ] && [ -n "$yq_output" ]; then
         eval "$array_name=()"
@@ -58,7 +58,7 @@ read_yaml_packages_with_desc() {
     fi
 
     local yq_output
-    yq_output=$(yq -r "$yaml_path[] | [.name, .description] | @tsv" "$yaml_file" 2>/dev/null)
+    yq_output=$(yq -r "$yaml_path"'[] | [.name, .description] | @tsv' "$yaml_file" 2>/dev/null)
 
     if [ $? -eq 0 ] && [ -n "$yq_output" ]; then
         eval "$array_name=()"

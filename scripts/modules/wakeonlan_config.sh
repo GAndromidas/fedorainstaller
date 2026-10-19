@@ -485,7 +485,9 @@ prompt_interface_selection() {
             printf '%b' "${BOLD}Select option [1-${#interfaces[@]}, a, s]:${RESET} " >/dev/tty 2>/dev/null || true
             read -r choice </dev/tty || choice=""
         else
-            printf '%b' "${BOLD}Select option [1-${#interfaces[@]}, a, s]:${RESET} " >&2
+            # No tty: plain text to stderr — BOLD here would put raw escape
+            # sequences onto the redirected log stream.
+            printf 'Select option [1-%s, a, s]: ' "${#interfaces[@]}" >&2
             read -r choice || choice=""
         fi
 
@@ -729,51 +731,8 @@ configure_wakeonlan() {
         return 2
     fi
 }
-
-# Function to disable Wake-on-LAN (for cleanup)
-disable_wakeonlan() {
-    ui_info "Disabling Wake-on-LAN..."
-
-    local interfaces=()
-    mapfile -t interfaces < <(get_ethernet_interfaces 2>/dev/null || true)
-
-    local iface service_file rule_file
-    for iface in "${interfaces[@]}"; do
-        if sudo ethtool -s "$iface" wol d 2>/dev/null; then
-            ui_info "Wake-on-LAN disabled on $iface"
-        fi
-
-        # Best-effort NetworkManager revert
-        if command -v nmcli &>/dev/null; then
-            local conn=""
-            conn=$(nmcli -t -f NAME,DEVICE connection show 2>/dev/null | awk -F: -v dev="$iface" '$2==dev {print $1; exit}')
-            if [[ -n "$conn" ]]; then
-                sudo nmcli connection modify "$conn" 802-3-ethernet.wake-on-lan ignore >>"$INSTALL_LOG" 2>&1 || true
-            fi
-        fi
-
-        service_file="/etc/systemd/system/wol-${iface}.service"
-        if sudo test -f "$service_file" 2>/dev/null; then
-            sudo systemctl disable "wol-${iface}.service" 2>/dev/null || true
-            sudo rm -f "$service_file"
-            ui_info "Removed WoL service for $iface"
-        fi
-
-        rule_file="/etc/udev/rules.d/81-wol-${iface}.rules"
-        if sudo test -f "$rule_file" 2>/dev/null; then
-            sudo rm -f "$rule_file"
-            ui_info "Removed WoL udev rule for $iface"
-        fi
-    done
-
-    sudo systemctl daemon-reload 2>/dev/null || true
-    sudo udevadm control --reload-rules 2>/dev/null || true
-    ui_success "Wake-on-LAN disabled on all interfaces"
-}
-
 # Export functions for external use
 export -f configure_wakeonlan
-export -f disable_wakeonlan
 export -f show_wol_status
 
 # Main execution — runs on source like every other step script, so the

@@ -225,21 +225,6 @@ is_ssd() {
     fi
     return 1
 }
-
-# Get installed kernel types
-get_installed_kernel_types() {
-    local kernel_types=()
-
-    if rpm -q kernel >/dev/null 2>&1; then
-        kernel_types+=("kernel")
-    fi
-    if rpm -q kernel-rt >/dev/null 2>&1; then
-        kernel_types+=("kernel-rt")
-    fi
-
-    echo "${kernel_types[@]}"
-}
-
 # Check system compatibility for running the installer (Fedora, disk, network)
 check_system_compatibility() {
     local issues=()
@@ -280,22 +265,4 @@ check_system_compatibility() {
     fi
 
     return 0
-}
-
-# Get system information summary
-get_system_info() {
-    local cpu=$(detect_cpu_vendor)
-    local ram=$(get_ram_gb)
-    local gpu=$(detect_gpu_vendor)
-    local laptop
-    is_laptop && laptop="Yes" || laptop="No"
-    local bootloader=$(detect_bootloader)
-
-    cat << EOF
-CPU: $cpu
-RAM: ${ram} GB
-GPU: ${gpu:-none}
-Laptop: $laptop
-Bootloader: $bootloader
-EOF
 }

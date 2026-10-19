@@ -460,9 +460,10 @@ if [ "$DRY_RUN" = true ]; then
   exit 0
 fi
 
-state_clear_failures || log_warning "Could not clear stale failure markers from state file"
-
-# Check for errors and prompt reboot (--yes never reboots; see lib/state.sh)
+# Check for errors and prompt reboot (--yes never reboots; see lib/state.sh).
+# The verdict MUST be read BEFORE clearing: state_clear_failures wipes every
+# FAILED line, so a post-clear state_has_failure is always false and genuinely
+# failed steps would be rebooted through silently.
 if state_has_failure || [ ${#ERRORS[@]} -ne 0 ]; then
   prompt_reboot 1
 else
